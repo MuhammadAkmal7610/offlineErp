@@ -14,22 +14,29 @@ import {
   Settings,
   X,
   GraduationCap,
+  User,
   ChevronDown,
   Check,
 } from 'lucide-react';
 
-const links = [
-  { path: '/', label: 'Dashboard', icon: Home },
-  { path: '/products', label: 'Products', icon: Box },
-  { path: '/inventory', label: 'Inventory', icon: Layers },
-  { path: '/sales', label: 'Sales', icon: ShoppingCart },
-  { path: '/purchases', label: 'Purchases', icon: Truck },
-  { path: '/suppliers', label: 'Suppliers', icon: Users },
-  { path: '/students', label: 'Students', icon: GraduationCap },
-  { path: '/expenses', label: 'Expenses', icon: Wallet },
-  { path: '/reports', label: 'Reports', icon: BarChart4 },
-  { path: '/settings', label: 'Settings', icon: Settings },
-];
+// Get navigation links based on business type
+function getLinks(activeBusiness) {
+  const isGeneralStore = activeBusiness === 'general';
+  return [
+    { path: '/', label: 'Dashboard', icon: Home },
+    { path: '/products', label: 'Products', icon: Box },
+    { path: '/inventory', label: 'Inventory', icon: Layers },
+    { path: '/sales', label: 'Sales', icon: ShoppingCart },
+    { path: '/purchases', label: 'Purchases', icon: Truck },
+    { path: '/suppliers', label: 'Suppliers', icon: Users },
+    isGeneralStore
+      ? { path: '/students', label: 'Students', icon: GraduationCap }
+      : { path: '/customers', label: 'Customers', icon: User },
+    { path: '/expenses', label: 'Expenses', icon: Wallet },
+    { path: '/reports', label: 'Reports', icon: BarChart4 },
+    { path: '/settings', label: 'Settings', icon: Settings },
+  ];
+}
 
 export default function Navbar() {
   const location = useLocation();
@@ -119,7 +126,7 @@ export default function Navbar() {
 
         {/* Navigation Links */}
         <div className="space-y-1 flex-1">
-          {links.map((item) => {
+          {getLinks(activeBusiness).map((item) => {
             const Icon = item.icon;
             const active = location.pathname === item.path;
             return (
@@ -197,7 +204,7 @@ export default function Navbar() {
 
             {/* Mobile Navigation Links */}
             <div className="space-y-1 px-4 py-4">
-              {links.map((item) => {
+              {getLinks(activeBusiness).map((item) => {
                 const Icon = item.icon;
                 const active = location.pathname === item.path;
                 return (

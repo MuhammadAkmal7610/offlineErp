@@ -4,25 +4,17 @@ import PageHeader from '@/components/PageHeader';
 import StatsCard from '@/components/StatsCard';
 import DashboardCharts from '@/components/DashboardCharts';
 import { initDB, getDB } from '@/lib/db';
+import { categoryColors } from '@/lib/seed';
 import { useSettings } from '@/hooks/useSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
 import { formatCurrency, formatDate, calculateNetProfit } from '@/lib/utils';
-
-const categoryColors = {
-  Biscuits: '#2563eb',
-  Chocolates: '#f97316',
-  Beverages: '#14b8a6',
-  Snacks: '#e11d48',
-  Dairy: '#8b5cf6',
-};
 
 export default function Dashboard() {
   const { activeBusiness, businessName, businessIcon, businessColor } = useBusiness();
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
   const db = getDB(activeBusiness);
-  // Debug log to check if Dashboard renders and what data is loaded
-  console.log('Dashboard rendered', { activeBusiness, businessName, settings });
+  const bizCategoryColors = categoryColors[activeBusiness] || categoryColors.general;
 
   const parseDate = (value) => {
     try {
@@ -57,15 +49,20 @@ export default function Dashboard() {
     async () => {
       await initDB(activeBusiness);
       const currentDB = getDB(activeBusiness);
-      const [salesData, purchaseData, expenseData, inventoryData, productsData, studentsData, studentLedgerData] = await Promise.all([
+      const isGeneralStore = activeBusiness === 'general';
+
+      const [salesData, purchaseData, expenseData, inventoryData, productsData] = await Promise.all([
         currentDB.sales.toArray(),
         currentDB.purchases.toArray(),
         currentDB.expenses.toArray(),
         currentDB.inventory.toArray(),
         currentDB.products.toArray(),
-        currentDB.students.toArray(),
-        currentDB.studentLedger.toArray(),
       ]);
+
+      // Load students or customers based on business type
+      const [peopleData, ledgerData] = isGeneralStore
+        ? await Promise.all([currentDB.students.toArray(), currentDB.studentLedger.toArray()])
+        : await Promise.all([currentDB.customers.toArray(), currentDB.customerLedger.toArray()]);
 
       const now = new Date();
       const startOfToday = new Date(now);
@@ -161,7 +158,7 @@ export default function Dashboard() {
         });
       });
       const pieData = Object.entries(categoryTotals)
-        .map(([name, value]) => ({ name, value, fill: categoryColors[name] || '#0f172a' }))
+        .map(([name, value]) => ({ name, value, fill: bizCategoryColors[name] || '#0f172a' }))
         .slice(0, 6);
 
       const recentTransactions = [
@@ -181,8 +178,10 @@ export default function Dashboard() {
         .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
         .slice(0, 5);
 
-      const studentBalances = studentsData.map(student => {
-        const ledger = studentLedgerData.filter(e => e.studentId === student.id);
+      // Calculate balances for students or customers
+      const peopleBalances = peopleData.map(person => {
+        const idField = isGeneralStore ? 'studentId' : 'customerId';
+        const ledger = ledgerData.filter(e => e[idField] === person.id);
         const totalCharged = ledger
           .filter(e => e.type === 'charge' || e.type === 'purchase')
           .reduce((sum, e) => sum + e.amount, 0);
@@ -190,16 +189,16 @@ export default function Dashboard() {
           .filter(e => e.type === 'payment')
           .reduce((sum, e) => sum + e.amount, 0);
         return {
-          studentId: student.id,
+          personId: person.id,
           balance: totalCharged - totalPaid
         };
       });
 
-      const totalStudentBalance = studentBalances
-        .filter(s => s.balance > 0)
-        .reduce((sum, s) => sum + s.balance, 0);
+      const totalPeopleBalance = peopleBalances
+        .filter(p => p.balance > 0)
+        .reduce((sum, p) => sum + p.balance, 0);
 
-      const studentsWithBalance = studentBalances.filter(s => s.balance > 0).length;
+      const peopleWithBalance = peopleBalances.filter(p => p.balance > 0).length;
 
       return {
         salesData,
@@ -207,8 +206,8 @@ export default function Dashboard() {
         expenseData,
         inventoryData,
         productsData,
-        studentsData,
-        studentLedgerData,
+        peopleData,
+        ledgerData,
         todaySales,
         salesThisMonth,
         purchasesThisMonth,
@@ -219,8 +218,9 @@ export default function Dashboard() {
         barData,
         pieData,
         recentTransactions,
-        totalStudentBalance,
-        studentsWithBalance,
+        totalPeopleBalance,
+        peopleWithBalance,
+        isGeneralStore,
       };
     },
     [activeBusiness]
@@ -234,7 +234,7 @@ export default function Dashboard() {
     return <div style={{ padding: 32, color: 'red', textAlign: 'center' }}>Error loading dashboard data.</div>;
   }
 
-  // Default fallback if useLiveQuery returns nullish (shouldn't happen, but for safety)
+  // Default fallback if useLiveQuery returns nullish
   const {
     todaySales = [],
     salesThisMonth = [],
@@ -247,9 +247,13 @@ export default function Dashboard() {
     barData = [],
     pieData = [],
     recentTransactions = [],
-    totalStudentBalance = 0,
-    studentsWithBalance = 0,
+    totalPeopleBalance = 0,
+    peopleWithBalance = 0,
+    isGeneralStore = true,
   } = dashboardData || {};
+
+  const peopleLabel = isGeneralStore ? 'Student Balances' : 'Customer Balances';
+  const peopleOweLabel = isGeneralStore ? 'students owe money' : 'customers owe money';
 
   return (
     <div className="space-y-6">
@@ -268,7 +272,7 @@ export default function Dashboard() {
         <StatsCard title="Net Profit" value={formatCurrency(netProfitThisMonth, currency)} description="Revenue minus cost and expenses" />
         <StatsCard title="Low Stock Alerts" value={`${lowStockCount}`} description="Products under threshold" />
         <StatsCard title="Total Products" value={`${products.length}`} description="Active product SKUs" />
-        <StatsCard title="Student Balances" value={formatCurrency(totalStudentBalance, currency)} description={`${studentsWithBalance} students owe money`} />
+        <StatsCard title={peopleLabel} value={formatCurrency(totalPeopleBalance, currency)} description={`${peopleWithBalance} ${peopleOweLabel}`} />
       </div>
 
       <DashboardCharts lineData={lineData} barData={barData} pieData={pieData} currency={currency} />

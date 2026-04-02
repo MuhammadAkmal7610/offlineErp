@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useSettings } from '@/hooks/useSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
-import { initDB, getDB } from '@/lib/db';
+import { initDB, getDB, resetDatabase } from '@/lib/db';
 
 export default function Settings() {
   const settings = useSettings();
@@ -14,6 +15,8 @@ export default function Settings() {
     phone: settings?.phone || '',
   });
   const [saved, setSaved] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetDone, setResetDone] = useState(false);
 
   // Update form when settings load
   useEffect(() => {
@@ -38,6 +41,24 @@ export default function Settings() {
     
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
+  };
+
+  const handleReset = async () => {
+    if (!confirm(`Are you sure you want to reset all data for this business? This will restore default products, suppliers, and ${activeBusiness === 'general' ? 'students' : 'customers'}.`)) {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      await resetDatabase(activeBusiness);
+      setResetDone(true);
+      setTimeout(() => setResetDone(false), 5000);
+    } catch (error) {
+      console.error('Failed to reset database:', error);
+      alert('Failed to reset database. Please try again.');
+    } finally {
+      setResetting(false);
+    }
   };
 
   return (
@@ -100,6 +121,26 @@ export default function Settings() {
             )}
           </div>
         </form>
+      </div>
+
+      <div className="rounded-3xl border border-red-200 bg-red-50 p-6 shadow-panel">
+        <h3 className="text-lg font-semibold text-red-900 mb-4">⚠️ Danger Zone</h3>
+        <p className="text-sm text-red-700 mb-4">
+          Resetting will delete ALL data (products, sales, purchases, inventory, {activeBusiness === 'general' ? 'students' : 'customers'}, etc.) for the current business and restore default seed data.
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={handleReset}
+            disabled={resetting}
+            className="inline-flex items-center gap-2 rounded-2xl bg-red-600 px-6 py-3 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${resetting ? 'animate-spin' : ''}`} />
+            {resetting ? 'Resetting...' : `Reset ${activeBusiness === 'general' ? 'General Store' : activeBusiness === 'jaggery' ? 'Jaggery Business' : 'Cosmetics Business'} Data`}
+          </button>
+          {resetDone && (
+            <span className="text-green-600 text-sm font-medium">✓ Database reset successfully! Refresh the page to see changes.</span>
+          )}
+        </div>
       </div>
 
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-panel">

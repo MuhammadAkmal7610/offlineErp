@@ -7,12 +7,12 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
 
-export default function StudentDetail() {
+export default function CustomerDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const studentId = Number(id);
+  const customerId = Number(id);
   const { activeBusiness } = useBusiness();
-  const [student, setStudent] = useState(null);
+  const [customer, setCustomer] = useState(null);
   const [ledger, setLedger] = useState([]);
   const [balance, setBalance] = useState({ totalCharged: 0, totalPaid: 0, balance: 0 });
   const [chargeModalOpen, setChargeModalOpen] = useState(false);
@@ -21,21 +21,21 @@ export default function StudentDetail() {
   const currency = settings?.currency ?? 'Rs';
 
   useEffect(() => {
-    loadStudentData();
-  }, [studentId, activeBusiness]);
+    loadCustomerData();
+  }, [customerId, activeBusiness]);
 
-  const loadStudentData = async () => {
+  const loadCustomerData = async () => {
     await initDB(activeBusiness);
     const currentDB = getDB(activeBusiness);
 
-    const studentData = await currentDB.students.get(studentId);
-    if (!studentData) return;
+    const customerData = await currentDB.customers.get(customerId);
+    if (!customerData) return;
 
-    const ledgerData = await currentDB.studentLedger
-      .where('studentId').equals(studentId)
+    const ledgerData = await currentDB.customerLedger
+      .where('customerId').equals(customerId)
       .sortBy('date');
 
-    setStudent(studentData);
+    setCustomer(customerData);
     setLedger(ledgerData);
 
     const totalCharged = ledgerData
@@ -53,8 +53,8 @@ export default function StudentDetail() {
     });
   };
 
-  const printStudentKhata = () => {
-    if (!student || !ledger) return;
+  const printCustomerKhata = () => {
+    if (!customer || !ledger) return;
 
     const w = window.open('', '_blank');
     if (!w) return;
@@ -62,12 +62,12 @@ export default function StudentDetail() {
     w.document.write(`
       <html>
         <head>
-          <title>Khata - ${student.name}</title>
+          <title>Khata - ${customer.name}</title>
           <style>
             body { font-family: Arial; padding: 20px; font-size: 13px; }
             .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
             .shop-name { font-size: 20px; font-weight: bold; }
-            .student-info { margin: 15px 0; padding: 10px; background: #f5f5f5; }
+            .customer-info { margin: 15px 0; padding: 10px; background: #f5f5f5; }
             .info-row { display: flex; justify-content: space-between; margin: 4px 0; }
             table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             th { background: #333; color: white; padding: 8px; text-align: left; }
@@ -80,21 +80,18 @@ export default function StudentDetail() {
         <body>
           <div class="header">
             <p class="shop-name">Offline Shop ERP</p>
-            <p>Student Account Statement</p>
+            <p>Customer Account Statement</p>
             <p>Date: ${new Date().toLocaleDateString()}</p>
           </div>
 
-          <div class="student-info">
+          <div class="customer-info">
             <div class="info-row">
-              <span><b>Student Name:</b> ${student.name}</span>
-              <span><b>Roll No:</b> ${student.rollNumber}</span>
+              <span><b>Customer Name:</b> ${customer.name}</span>
+              <span><b>Phone:</b> ${customer.phone}</span>
             </div>
             <div class="info-row">
-              <span><b>Father Name:</b> ${student.fatherName}</span>
-              <span><b>Class:</b> ${student.class}</span>
-            </div>
-            <div class="info-row">
-              <span><b>Father Phone:</b> ${student.fatherPhone}</span>
+              <span><b>Email:</b> ${customer.email || 'N/A'}</span>
+              ${customer.address ? `<span><b>Address:</b> ${customer.address}</span>` : ''}
             </div>
           </div>
 
@@ -137,11 +134,11 @@ export default function StudentDetail() {
     w.document.close();
   };
 
-  if (!student) {
+  if (!customer) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Student Khata" description="Account details" />
-        <div className="text-center py-8 text-gray-500">Student not found</div>
+        <PageHeader title="Customer Khata" description="Account details" />
+        <div className="text-center py-8 text-gray-500">Customer not found</div>
       </div>
     );
   }
@@ -149,15 +146,15 @@ export default function StudentDetail() {
   return (
     <div className="space-y-6">
       <PageHeader 
-        title="🎓 Student Khata" 
-        description={`Account details for ${student.name}`}
+        title="👤 Customer Khata" 
+        description={`Account details for ${customer.name}`}
         action={
           <button
-            onClick={() => navigate('/students')}
+            onClick={() => navigate('/customers')}
             className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Students
+            Back to Customers
           </button>
         }
       />
@@ -166,30 +163,28 @@ export default function StudentDetail() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <div>
             <p className="text-sm text-gray-500">Name</p>
-            <p className="font-semibold">{student.name}</p>
+            <p className="font-semibold">{customer.name}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Roll No</p>
-            <p className="font-semibold">{student.rollNumber}</p>
+            <p className="text-sm text-gray-500">Phone</p>
+            <p className="font-semibold">{customer.phone}</p>
           </div>
           <div>
-            <p className="text-sm text-gray-500">Father</p>
-            <p className="font-semibold">{student.fatherName}</p>
+            <p className="text-sm text-gray-500">Email</p>
+            <p className="font-semibold">{customer.email || '-'}</p>
           </div>
-          <div>
-            <p className="text-sm text-gray-500">Class</p>
-            <p className="font-semibold">{student.class}</p>
-          </div>
+          {customer.address && (
+            <div>
+              <p className="text-sm text-gray-500">Address</p>
+              <p className="font-semibold">{customer.address}</p>
+            </div>
+          )}
         </div>
 
         <div className="flex items-center gap-4">
-          <div>
-            <p className="text-sm text-gray-500">Father Phone</p>
-            <p className="font-semibold">{student.fatherPhone}</p>
-          </div>
-          {student.fatherPhone && (
+          {customer.phone && (
             <a
-              href={`tel:${student.fatherPhone}`}
+              href={`tel:${customer.phone}`}
               className="inline-flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700"
             >
               <Phone className="h-4 w-4" />
@@ -272,7 +267,7 @@ export default function StudentDetail() {
           Record Payment
         </button>
         <button
-          onClick={printStudentKhata}
+          onClick={printCustomerKhata}
           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
         >
           <Printer className="h-4 w-4" />
@@ -282,22 +277,22 @@ export default function StudentDetail() {
 
       {chargeModalOpen && (
         <ChargeModal
-          studentId={studentId}
+          customerId={customerId}
           onClose={() => setChargeModalOpen(false)}
           onSave={() => {
             setChargeModalOpen(false);
-            loadStudentData();
+            loadCustomerData();
           }}
         />
       )}
 
       {paymentModalOpen && (
         <PaymentModal
-          studentId={studentId}
+          customerId={customerId}
           onClose={() => setPaymentModalOpen(false)}
           onSave={() => {
             setPaymentModalOpen(false);
-            loadStudentData();
+            loadCustomerData();
           }}
         />
       )}
@@ -305,18 +300,18 @@ export default function StudentDetail() {
   );
 }
 
-function ChargeModal({ studentId, onClose, onSave }) {
+function ChargeModal({ customerId, onClose, onSave }) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
-  const { activeBusiness } = useBusiness();
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { activeBusiness } = useBusiness();
     const currentDB = getDB(activeBusiness);
-    await currentDB.studentLedger.add({
-      studentId,
+    await currentDB.customerLedger.add({
+      customerId,
       type: 'charge',
       amount: Number(amount),
       description: description || 'Purchase',
@@ -376,18 +371,18 @@ function ChargeModal({ studentId, onClose, onSave }) {
   );
 }
 
-function PaymentModal({ studentId, onClose, onSave }) {
+function PaymentModal({ customerId, onClose, onSave }) {
   const [amount, setAmount] = useState('');
   const [note, setNote] = useState('');
-  const { activeBusiness } = useBusiness();
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    const { activeBusiness } = useBusiness();
     const currentDB = getDB(activeBusiness);
-    await currentDB.studentLedger.add({
-      studentId,
+    await currentDB.customerLedger.add({
+      customerId,
       type: 'payment',
       amount: Number(amount),
       description: note || 'Payment received',

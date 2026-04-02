@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { getDB, initDB, initAllDBs } from '@/lib/db';
+import { getDB, initDB, initAllDBs, forceInitDB } from '@/lib/db';
 
 export const BusinessContext = createContext({
   activeBusiness: 'general',
@@ -69,11 +69,28 @@ export const BusinessProvider = ({ children }) => {
   const [mounted, setMounted] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize all databases on mount
+  // Initialize all databases on mount with unique seed data
   useEffect(() => {
     const initializeDatabases = async () => {
       try {
-        await initAllDBs();
+        // Check if this is first time running (no business preference saved)
+        const saved = localStorage.getItem('activeBusiness');
+        const isFirstRun = !saved;
+        
+        if (isFirstRun) {
+          // First time: force initialize all databases with unique seed data
+          console.log('First run detected - initializing all databases with unique data...');
+          await Promise.all([
+            forceInitDB('general'),
+            forceInitDB('jaggery'),
+            forceInitDB('cosmetics')
+          ]);
+          console.log('All databases initialized with unique business data');
+        } else {
+          // Subsequent runs: just initialize normally
+          await initAllDBs();
+        }
+        
         setIsInitialized(true);
       } catch (error) {
         console.error('Failed to initialize databases:', error);

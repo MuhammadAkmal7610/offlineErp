@@ -57,6 +57,31 @@ export async function initDB(business = 'general') {
   return targetDB;
 }
 
+// Force reinitialize a database with business-specific seed data
+export async function forceInitDB(business = 'general') {
+  const targetDB = getDB(business);
+  await targetDB.open();
+  
+  // Clear all tables
+  await targetDB.products.clear();
+  await targetDB.inventory.clear();
+  await targetDB.purchases.clear();
+  await targetDB.sales.clear();
+  await targetDB.suppliers.clear();
+  await targetDB.expenses.clear();
+  await targetDB.students.clear();
+  await targetDB.studentLedger.clear();
+  await targetDB.salesReturns.clear();
+  await targetDB.settings.clear();
+  await targetDB.customers.clear();
+  await targetDB.customerLedger.clear();
+  
+  // Re-seed with business-specific data
+  await seedDatabase(targetDB, business);
+  
+  return targetDB;
+}
+
 // Alias for backwards compatibility
 export { initDB as initDb };
 
@@ -146,4 +171,38 @@ export async function exportAllDatabases() {
     jaggery: await exportDatabase(jaggeryDB),
     cosmetics: await exportDatabase(cosmeticsDB),
   };
+}
+
+// Reset a specific database and re-seed with business-specific data
+export async function resetDatabase(business = 'general') {
+  const targetDB = getDB(business);
+  await targetDB.open();
+  
+  // Clear all tables
+  await targetDB.products.clear();
+  await targetDB.inventory.clear();
+  await targetDB.purchases.clear();
+  await targetDB.sales.clear();
+  await targetDB.suppliers.clear();
+  await targetDB.expenses.clear();
+  await targetDB.students.clear();
+  await targetDB.studentLedger.clear();
+  await targetDB.salesReturns.clear();
+  await targetDB.settings.clear();
+  await targetDB.customers.clear();
+  await targetDB.customerLedger.clear();
+  
+  // Re-seed with business-specific data
+  await seedDatabase(targetDB, business);
+  
+  return true;
+}
+
+// Reset all databases
+export async function resetAllDatabases() {
+  await Promise.all([
+    resetDatabase('general'),
+    resetDatabase('jaggery'),
+    resetDatabase('cosmetics')
+  ]);
 }
