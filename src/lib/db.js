@@ -1,0 +1,149 @@
+import Dexie from 'dexie';
+import { seedDatabase } from './seed.js';
+
+// Base database class
+export class ShopDatabase extends Dexie {
+  constructor(dbName) {
+    super(dbName);
+    this.version(1).stores({
+      products: '++id,name,category,barcode,price,costPrice,unit,createdAt',
+      inventory: '++id,productId,quantity,lowStockThreshold,lastUpdated',
+      purchases: '++id,productId,productName,quantity,costPrice,totalCost,supplier,date',
+      sales: '++id,date,totalAmount,discount,paymentMethod,studentId',
+      suppliers: '++id,name,phone,email,address,createdAt',
+      expenses: '++id,title,amount,category,date',
+      students: '++id,name,fatherName,rollNumber,phone,fatherPhone,class,address,createdAt',
+      studentLedger: '++id,studentId,type,amount,description,date',
+      salesReturns: '++id,originalSaleId,productId,productName,quantity,refundAmount,reason,refundMethod,studentId,date',
+      settings: 'key',
+      customers: '++id,name,phone,email',
+      customerLedger: '++id,customerId,type,amount,description,date',
+    });
+  }
+}
+
+// Three separate databases for each business
+export const generalDB = new ShopDatabase('ShopERP_General');
+export const jaggeryDB = new ShopDatabase('ShopERP_Jaggery');
+export const cosmeticsDB = new ShopDatabase('ShopERP_Cosmetics');
+
+// Default export (will be overridden by context)
+export let db = generalDB;
+
+// Get the database for a specific business
+export const getDB = (business) => {
+  switch (business) {
+    case 'general': return generalDB;
+    case 'jaggery': return jaggeryDB;
+    case 'cosmetics': return cosmeticsDB;
+    default: return generalDB;
+  }
+};
+
+// Set the active database
+export const setDB = (business) => {
+  db = getDB(business);
+};
+
+// Initialize a specific database
+export async function initDB(business = 'general') {
+  const targetDB = getDB(business);
+  await targetDB.open();
+  await deduplicateProducts(targetDB);
+  const count = await targetDB.products.count();
+  if (count === 0) {
+    await seedDatabase(targetDB, business);
+  }
+  return targetDB;
+}
+
+// Alias for backwards compatibility
+export { initDB as initDb };
+
+// Initialize all databases
+export async function initAllDBs() {
+  await Promise.all([
+    initDB('general'),
+    initDB('jaggery'),
+    initDB('cosmetics')
+  ]);
+}
+
+export async function deduplicateProducts(targetDB = generalDB) {
+  const allProducts = await targetDB.products.toArray();
+  const seen = new Map();
+  const toDelete = [];
+
+  for (const product of allProducts) {
+    const key = product.barcode ?? product.name;
+    if (seen.has(key)) {
+      if (product.id) toDelete.push(product.id);
+    } else if (product.id) {
+      seen.set(key, product.id);
+    }
+  }
+
+  if (toDelete.length > 0) {
+    await targetDB.products.bulkDelete(toDelete);
+  }
+
+  const validProductIds = (await targetDB.products.toArray()).map((product) => product.id).filter(Boolean);
+  const allInventory = await targetDB.inventory.toArray();
+  const orphanedInventory = allInventory.filter((item) => !validProductIds.includes(item.productId)).map((item) => item.id).filter(Boolean);
+  if (orphanedInventory.length > 0) {
+    await targetDB.inventory.bulkDelete(orphanedInventory);
+  }
+
+  const allInv = await targetDB.inventory.toArray();
+  const seenProductIds = new Set();
+  const dupInv = [];
+  for (const inv of allInv) {
+    if (seenProductIds.has(inv.productId)) {
+      if (inv.id) dupInv.push(inv.id);
+    } else {
+      seenProductIds.add(inv.productId);
+    }
+  }
+  if (dupInv.length > 0) {
+    await targetDB.inventory.bulkDelete(dupInv);
+  }
+}
+
+export async function exportDatabase(targetDB = generalDB) {
+  const [products, inventory, purchases, sales, suppliers, expenses, studentLedger, salesReturns, settings, customers, customerLedger] = await Promise.all([
+    targetDB.products.toArray(),
+    targetDB.inventory.toArray(),
+    targetDB.purchases.toArray(),
+    targetDB.sales.toArray(),
+    targetDB.suppliers.toArray(),
+    targetDB.expenses.toArray(),
+    targetDB.studentLedger.toArray(),
+    targetDB.salesReturns.toArray(),
+    targetDB.settings.toArray(),
+    targetDB.customers.toArray(),
+    targetDB.customerLedger.toArray(),
+  ]);
+
+  return {
+    products,
+    inventory,
+    purchases,
+    sales,
+    suppliers,
+    expenses,
+    studentLedger,
+    salesReturns,
+    settings,
+    customers,
+    customerLedger,
+  };
+}
+
+// Export all databases data
+export async function exportAllDatabases() {
+  return {
+    general: await exportDatabase(generalDB),
+    jaggery: await exportDatabase(jaggeryDB),
+    cosmetics: await exportDatabase(cosmeticsDB),
+  };
+}
