@@ -21,6 +21,8 @@ export default function Dashboard() {
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
   const db = getDB(activeBusiness);
+  // Debug log to check if Dashboard renders and what data is loaded
+  console.log('Dashboard rendered', { activeBusiness, businessName, settings });
 
   const parseDate = (value) => {
     try {
@@ -222,43 +224,32 @@ export default function Dashboard() {
       };
     },
     [activeBusiness]
-  ) ?? {
-    salesData: [],
-    purchaseData: [],
-    expenseData: [],
-    inventoryData: [],
-    productsData: [],
-    studentsData: [],
-    studentLedgerData: [],
-    todaySales: [],
-    salesThisMonth: [],
-    purchasesThisMonth: [],
-    expensesThisMonth: [],
-    lowStockCount: 0,
-    netProfitThisMonth: 0,
-    lineData: [],
-    barData: [],
-    pieData: [],
-    recentTransactions: [],
-    totalStudentBalance: 0,
-    studentsWithBalance: 0,
-  };
+  );
 
+  // Loading and error fallback
+  if (dashboardData === undefined) {
+    return <div style={{ padding: 32, textAlign: 'center' }}>Loading dashboard data...</div>;
+  }
+  if (dashboardData === null) {
+    return <div style={{ padding: 32, color: 'red', textAlign: 'center' }}>Error loading dashboard data.</div>;
+  }
+
+  // Default fallback if useLiveQuery returns nullish (shouldn't happen, but for safety)
   const {
-    todaySales,
-    salesThisMonth,
-    purchasesThisMonth,
-    expensesThisMonth,
-    lowStockCount,
-    netProfitThisMonth,
-    productsData: products,
-    lineData,
-    barData,
-    pieData,
-    recentTransactions,
-    totalStudentBalance,
-    studentsWithBalance,
-  } = dashboardData;
+    todaySales = [],
+    salesThisMonth = [],
+    purchasesThisMonth = [],
+    expensesThisMonth = [],
+    lowStockCount = 0,
+    netProfitThisMonth = 0,
+    productsData: products = [],
+    lineData = [],
+    barData = [],
+    pieData = [],
+    recentTransactions = [],
+    totalStudentBalance = 0,
+    studentsWithBalance = 0,
+  } = dashboardData || {};
 
   return (
     <div className="space-y-6">

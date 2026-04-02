@@ -4,8 +4,7 @@
   "version": "1.0.0",
   "description": "Offline ERP Application built with Electron, Vite, and React",
   "author": "ERP Developer",
-  "type": "module",
-  "main": "main.js",
+  "main": "main.cjs",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -46,7 +45,7 @@
     },
     "files": [
       "dist/**/*",
-      "main.js"
+      "main.cjs"
     ],
     "win": {
       "target": "nsis",
