@@ -146,30 +146,37 @@ export default function Products() {
         title="Products"
         description="Add, edit, and print product QR labels"
         action={
-          <button type="button" onClick={openNewProduct} className="inline-flex items-center gap-2 rounded-2xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
+          <button
+            type="button"
+            onClick={openNewProduct}
+            className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
             <Plus className="h-4 w-4" />
             Add Product
           </button>
         }
       />
 
-      <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-panel">
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative max-w-md flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search by name, category, or barcode"
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm text-slate-900 outline-none transition focus:border-brand-500"
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
             />
+          </div>
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <span className="rounded-lg bg-slate-100 px-3 py-1 font-medium">{filteredProducts.length} products</span>
           </div>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-slate-600">
+              <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                 <th className="px-4 py-3">Product</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Barcode</th>
@@ -180,36 +187,52 @@ export default function Products() {
                 <th className="px-4 py-3">Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-slate-200">
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="border-b border-slate-200 hover:bg-slate-50">
+                <tr key={product.id} className="hover:bg-slate-50 transition-colors">
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
-                      <img src={product.image} alt={product.name} className="h-12 w-12 rounded-3xl object-cover" />
+                      <img src={product.image} alt={product.name} className="h-12 w-12 rounded-xl object-cover" />
                       <div>
                         <p className="font-semibold text-slate-900">{product.name}</p>
-                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <div className="mt-1 flex items-center gap-2">
                           <span
-                            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium text-white ${
-                              product.barcode ? 'bg-emerald-600' : 'bg-slate-400'
+                            className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                              product.barcode ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-600'
                             }`}
                           >
-                            ● {product.barcode ? 'Has Barcode' : 'Name Only'}
+                            {product.barcode ? '✓ Has Barcode' : '○ Name Only'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500">{product.description}</p>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-4 text-slate-700">{product.category}</td>
-                  <td className="px-4 py-4 text-slate-700">{product.barcode}</td>
-                  <td className="px-4 py-4 text-slate-700">{formatCurrency(product.price, currency)}</td>
-                  <td className="px-4 py-4 text-slate-700">{formatCurrency(product.costPrice, currency)}</td>
-                  <td className="px-4 py-4 text-slate-700">{product.unit}</td>
-                  <td className="px-4 py-4 text-slate-700">{productInventory(product.id)?.quantity ?? 0}</td>
+                  <td className="px-4 py-4">
+                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700">
+                      {product.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4 text-slate-700 font-mono text-xs">{product.barcode || '-'}</td>
+                  <td className="px-4 py-4 font-semibold text-slate-900">{formatCurrency(product.price, currency)}</td>
+                  <td className="px-4 py-4 text-slate-600">{formatCurrency(product.costPrice, currency)}</td>
+                  <td className="px-4 py-4 text-slate-600 text-xs">{product.unit}</td>
+                  <td className="px-4 py-4">
+                    <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                      (productInventory(product.id)?.quantity ?? 0) <= 0
+                        ? 'bg-red-100 text-red-700'
+                        : (productInventory(product.id)?.quantity ?? 0) <= (product.lowStockThreshold || 10)
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-emerald-100 text-emerald-700'
+                    }`}>
+                      {productInventory(product.id)?.quantity ?? 0}
+                    </span>
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-2">
-                      <button onClick={() => openEditProduct(product)} className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-slate-700 transition hover:bg-slate-100">
+                      <button
+                        onClick={() => openEditProduct(product)}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
                         <Edit3 className="h-4 w-4" />
                       </button>
                       <button
@@ -218,7 +241,7 @@ export default function Products() {
                           setOpenForm(true);
                           setConfirmDelete(true);
                         }}
-                        className="rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-red-700 transition hover:bg-red-100"
+                        className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -229,39 +252,54 @@ export default function Products() {
             </tbody>
           </table>
         </div>
+        {filteredProducts.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <svg className="h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+            </svg>
+            <p className="text-sm">No products found</p>
+          </div>
+        )}
       </div>
 
       {openForm && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/40 p-4">
-          <div className="w-full max-w-4xl rounded-3xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-4xl rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.24em] text-slate-500">{selectedProduct ? 'Edit product' : 'Add product'}</p>
-                <h2 className="mt-2 text-2xl font-semibold text-slate-900">{selectedProduct ? selectedProduct.name : 'New product'}</h2>
+                <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                  {selectedProduct ? 'Edit product' : 'Add product'}
+                </p>
+                <h2 className="mt-1 text-2xl font-bold text-slate-900">
+                  {selectedProduct ? selectedProduct.name : 'New product'}
+                </h2>
               </div>
-              <button onClick={() => setOpenForm(false)} className="rounded-2xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200">
+              <button
+                onClick={() => setOpenForm(false)}
+                className="rounded-xl bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200 transition-colors"
+              >
                 Close
               </button>
             </div>
             <form onSubmit={saveProduct} className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
               <div className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span>Name</span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Name</span>
                     <input
                       value={form.name}
                       onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
                     />
                   </label>
 
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span>Category</span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Category</span>
                     <select
                       value={form.category}
                       onChange={(event) => setForm((current) => ({ ...current, category: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                     >
                       {categories.map((category) => (
                         <option key={category} value={category}>
@@ -273,28 +311,32 @@ export default function Products() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span className="text-sm font-medium">Barcode <span className="text-gray-400 font-normal">(optional)</span></span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">
+                      Barcode <span className="text-slate-400 font-normal">(optional)</span>
+                    </span>
                     <div className="flex gap-2">
                       <input
                         type="text"
                         inputMode="numeric"
-                        placeholder="Scan with USB scanner or type manually"
+                        placeholder="Scan or type barcode"
                         value={form.barcode}
                         onChange={(event) => updateBarcode(event.target.value)}
-                        className="flex-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                        className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                         autoComplete="off"
                       />
-                      {form.barcode ? <span className="text-emerald-600 text-sm self-center">✓ Set</span> : null}
+                      {form.barcode && (
+                        <span className="flex items-center text-sm font-medium text-emerald-600">✓</span>
+                      )}
                     </div>
-                    <p className="text-xs text-gray-400">Point USB scanner at product packet and scan, or type the number printed under the barcode</p>
+                    <p className="text-xs text-slate-500">Scan with USB scanner or type the barcode number</p>
                   </label>
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span>Unit</span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Unit</span>
                     <select
                       value={form.unit}
                       onChange={(event) => setForm((current) => ({ ...current, unit: event.target.value }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                     >
                       {units.map((unit) => (
                         <option key={unit} value={unit}>
@@ -306,42 +348,45 @@ export default function Products() {
                 </div>
 
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span>Sale Price</span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Sale Price</span>
                     <input
                       type="number"
                       step="0.01"
                       value={form.price}
                       onChange={(event) => setForm((current) => ({ ...current, price: Number(event.target.value) }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
                     />
                   </label>
-                  <label className="space-y-2 text-sm text-slate-700">
-                    <span>Cost Price</span>
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Cost Price</span>
                     <input
                       type="number"
                       step="0.01"
                       value={form.costPrice}
                       onChange={(event) => setForm((current) => ({ ...current, costPrice: Number(event.target.value) }))}
-                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
                     />
                   </label>
                 </div>
 
-                <label className="space-y-2 text-sm text-slate-700">
-                  <span>Description</span>
+                <label className="space-y-2">
+                  <span className="text-sm font-medium text-slate-700">Description</span>
                   <textarea
                     value={form.description}
                     onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))}
-                    rows={4}
-                    className="w-full rounded-3xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                    rows={3}
+                    className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                   />
                 </label>
 
-                <div className="flex flex-wrap gap-3">
-                  <button type="submit" className="inline-flex items-center gap-2 rounded-2xl bg-brand-600 px-5 py-3 text-sm font-semibold text-white hover:bg-brand-700">
+                <div className="flex gap-3 pt-2">
+                  <button
+                    type="submit"
+                    className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+                  >
                     {selectedProduct ? 'Update Product' : 'Save Product'}
                   </button>
                 </div>
@@ -349,27 +394,29 @@ export default function Products() {
 
               <div className="space-y-5">
                 <ImageUpload value={form.image} onChange={(value) => setForm((current) => ({ ...current, image: value }))} />
-                <div className="border rounded-xl p-4 bg-gray-50">
-                  <p className="text-sm font-semibold mb-3">QR Code Preview</p>
+                <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-sm font-bold text-slate-900 mb-3">QR Code Preview</p>
 
-                  <div className="flex flex-col items-center gap-2 bg-white p-4 rounded-lg border">
-                    <div id="product-qr">
+                  <div className="flex flex-col items-center gap-3 bg-white rounded-lg border border-slate-200 p-4">
+                    <div id="product-qr" className="rounded-lg overflow-hidden">
                       <QRCodeSVG value={form.barcode?.trim() || tempPreviewBarcode} size={160} includeMargin={true} />
                     </div>
-                    <p className="text-xs font-bold text-center">{form.name || 'Product Name'}</p>
-                    <p className="text-xs text-gray-500">{currency} {form.price?.toFixed(2) ?? '0.00'}</p>
-                    <p className="text-xs text-gray-400">{form.barcode?.trim() || tempPreviewBarcode}</p>
+                    <div className="text-center">
+                      <p className="text-sm font-bold text-slate-900">{form.name || 'Product Name'}</p>
+                      <p className="text-xs text-slate-500">{currency} {form.price?.toFixed(2) ?? '0.00'}</p>
+                      <p className="text-xs text-slate-400 font-mono mt-1">{form.barcode?.trim() || tempPreviewBarcode}</p>
+                    </div>
                   </div>
 
-                  {!form.barcode?.trim() ? (
-                    <div className="mt-2 bg-yellow-50 border border-yellow-200 rounded-lg p-2">
-                      <p className="text-xs text-yellow-700">
-                        ⚠️ No barcode entered. A unique QR will be auto-generated when you save. Print and stick it on the product.
+                  {!form.barcode?.trim() && (
+                    <div className="mt-3 rounded-lg bg-amber-50 border border-amber-200 p-3">
+                      <p className="text-xs text-amber-700">
+                        ⚠️ No barcode entered. A unique QR will be auto-generated when you save.
                       </p>
                     </div>
-                  ) : null}
+                  )}
 
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex gap-2 mt-4">
                     <button
                       type="button"
                       onClick={() => {
@@ -384,7 +431,7 @@ export default function Products() {
                         a.click();
                         URL.revokeObjectURL(url);
                       }}
-                      className="flex-1 border border-blue-600 text-blue-600 rounded-lg py-2 text-xs font-medium hover:bg-blue-50"
+                      className="flex-1 rounded-xl border border-blue-600 px-3 py-2 text-xs font-medium text-blue-600 hover:bg-blue-50 transition-colors"
                     >
                       ⬇ Download QR
                     </button>
@@ -436,7 +483,7 @@ export default function Products() {
                           </html>
                         `);
                       }}
-                      className="flex-1 bg-blue-600 text-white rounded-lg py-2 text-xs font-medium hover:bg-blue-700"
+                      className="flex-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-medium text-white hover:bg-blue-700 transition-colors"
                     >
                       🖨 Print QR
                     </button>

@@ -149,81 +149,93 @@ export default function Customers() {
         />
       </div>
 
-      <div className="flex gap-2 flex-wrap">
-        <input
-          type="text"
-          placeholder="Search by name, phone, email..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="flex-1 min-w-[200px] border rounded-lg px-4 py-2"
-        />
-        <button
-          onClick={() => {
-            setEditCustomer(null);
-            setAddModalOpen(true);
-          }}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Customer
-        </button>
+      <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by name, phone, email..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-4 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
+            />
+          </div>
+          <button
+            onClick={() => {
+              setEditCustomer(null);
+              setAddModalOpen(true);
+            }}
+            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Customer
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Balance</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {filteredCustomers.map((customer) => (
-              <tr key={customer.id} className="hover:bg-gray-50">
-                <td className="px-4 py-3 text-sm font-medium text-gray-900">{customer.name}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{customer.phone}</td>
-                <td className="px-4 py-3 text-sm text-gray-900">{customer.email || '-'}</td>
-                <td className={`px-4 py-3 text-sm font-medium ${getBalanceColor(customer.balance)}`}>
-                  {formatCurrency(customer.balance, currency)}
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => navigate(`/customers/${customer.id}`)}
-                      className="text-blue-600 hover:text-blue-800"
-                      title="View Khata"
-                    >
-                      <BookOpen className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEditCustomer(customer)}
-                      className="text-gray-600 hover:text-gray-800"
-                      title="Edit Customer"
-                    >
-                      <Edit className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedCustomer(customer);
-                        setConfirmDelete(true);
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete Customer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </td>
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Name</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Phone</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Email</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Balance</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-200">
+              {filteredCustomers.map((customer) => (
+                <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
+                  <td className="px-4 py-3">
+                    <span className="text-sm font-semibold text-slate-900">{customer.name}</span>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-700">{customer.phone}</td>
+                  <td className="px-4 py-3 text-sm text-slate-700">{customer.email || '-'}</td>
+                  <td className={`px-4 py-3 text-sm font-bold ${getBalanceColor(customer.balance)}`}>
+                    {formatCurrency(customer.balance, currency)}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => navigate(`/customers/${customer.id}`)}
+                        className="rounded-lg border border-blue-200 bg-blue-50 p-2 text-blue-600 hover:bg-blue-100 transition-colors"
+                        title="View Khata"
+                      >
+                        <BookOpen className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEditCustomer(customer)}
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-2 text-slate-600 hover:bg-slate-100 transition-colors"
+                        title="Edit Customer"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setConfirmDelete(true);
+                        }}
+                        className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors"
+                        title="Delete Customer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         {filteredCustomers.length === 0 && (
-          <div className="text-center py-8 text-gray-500">
-            No customers found
+          <div className="flex flex-col items-center justify-center py-12 text-slate-500">
+            <svg className="h-12 w-12 text-slate-300 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+            <p className="text-sm">No customers found</p>
           </div>
         )}
       </div>
@@ -272,88 +284,95 @@ function CustomerModal({ customer, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <h2 className="text-xl font-bold mb-4">{customer ? 'Edit Customer' : 'Add New Customer'}</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="mb-6">
+          <h2 className="text-xl font-bold text-slate-900">
+            {customer ? 'Edit Customer' : 'Add New Customer'}
+          </h2>
+          <p className="mt-1 text-sm text-slate-500">
+            {customer ? 'Update customer information' : 'Create a new customer account'}
+          </p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Customer Name *</label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name *</label>
               <input
                 type="text"
                 required
                 value={formData.name}
                 onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="mt-1 block w-full border rounded-md px-3 py-2"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                 placeholder="e.g. Ahmad Khan"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Phone Number *</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
               <input
                 type="tel"
                 required
                 value={formData.phone}
                 onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="mt-1 block w-full border rounded-md px-3 py-2"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                 placeholder="e.g. 0312-1234567"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
               <input
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="mt-1 block w-full border rounded-md px-3 py-2"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                 placeholder="Optional"
               />
             </div>
 
-            <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700">Address 
-                <span className="text-gray-400 font-normal text-xs"> (optional)</span>
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
+                Address <span className="text-slate-400 font-normal">(optional)</span>
               </label>
               <input
                 type="text"
                 value={formData.address}
                 onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="mt-1 block w-full border rounded-md px-3 py-2"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                 placeholder="Home or business address"
               />
             </div>
 
             {!customer && (
-              <div className="col-span-2">
-                <label className="block text-sm font-medium text-gray-700">Opening Balance (Rs)</label>
+              <div className="sm:col-span-2">
+                <label className="block text-sm font-medium text-slate-700 mb-1">Opening Balance (Rs)</label>
                 <input
                   type="number"
                   min="0"
                   value={formData.openingBalance}
                   onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
-                  className="mt-1 block w-full border rounded-md px-3 py-2"
+                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                   placeholder="0"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="mt-1 text-xs text-slate-500">
                   If customer already owes money, enter amount here
                 </p>
               </div>
             )}
           </div>
 
-          <div className="flex gap-2 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
+              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
             >
               {customer ? 'Update Customer' : 'Save Customer'}
             </button>

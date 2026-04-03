@@ -349,20 +349,20 @@ export default function Sales() {
     <div className="space-y-6">
       <PageHeader title="Sales" description="POS with scanner, cart, and receipt printing" />
       <div className="grid gap-6 xl:grid-cols-[1.5fr_0.9fr]">
-        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-panel">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm uppercase tracking-[0.24em] text-slate-500">Search product</p>
-              <h2 className="mt-2 text-2xl font-semibold text-slate-900">Add items to cart</h2>
+              <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Search product</p>
+              <h2 className="mt-1 text-xl font-bold text-slate-900">Add items to cart</h2>
             </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-600">
               {searchResults.length} product(s) found
             </div>
           </div>
 
           <div className="space-y-4">
             <div>
-              <label className="text-sm font-medium text-slate-700 block mb-1">
+              <label className="text-sm font-bold text-slate-700 block mb-2">
                 🔍 Scan Barcode or Search by Name
               </label>
               <div className="flex gap-2 mb-3">
@@ -372,25 +372,25 @@ export default function Sales() {
                   value={barcodeValue}
                   onChange={(e) => setBarcodeValue(e.target.value)}
                   onKeyDown={handleBarcodeInput}
-                  placeholder="📷 Scan barcode with USB scanner or type barcode number + Enter"
-                  className="flex-1 border-2 border-blue-300 rounded-lg px-4 py-3 text-sm focus:border-blue-500 focus:outline-none"
+                  placeholder="📷 Scan barcode or type number + Enter"
+                  className="flex-1 rounded-xl border-2 border-blue-200 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                   autoComplete="off"
                 />
                 <button
                   type="button"
                   onClick={async () => await handleBarcodeSearch(barcodeValue)}
-                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700"
+                  className="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-blue-700 transition-colors"
                 >
                   Add
                 </button>
               </div>
-              {scanFeedback ? (
-                <div className={`px-4 py-2 rounded-lg text-sm font-medium mb-3 ${
-                  scanFeedback.type === 'success' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+              {scanFeedback && (
+                <div className={`px-4 py-2 rounded-xl text-sm font-medium mb-3 ${
+                  scanFeedback.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
                 }`}>
                   {scanFeedback.msg}
                 </div>
-              ) : null}
+              )}
             </div>
 
             <div className="relative w-full">
@@ -400,49 +400,51 @@ export default function Sales() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="🔤 Or search product by name..."
-                className="w-full border rounded-lg px-4 py-2 pl-9"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 pl-10 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
               />
               {searchQuery.length > 0 && searchResults.length > 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-xl mt-1 max-h-64 overflow-y-auto">
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
                   {searchResults.map((product) => (
                     <div
                       key={product.id}
                       onMouseDown={() => addToCart(product)}
-                      className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer border-b last:border-0"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 transition-colors"
                     >
                       {product.image ? (
-                        <img src={product.image} className="w-10 h-10 rounded object-cover flex-shrink-0" />
+                        <img src={product.image} className="h-10 w-10 rounded-lg object-cover flex-shrink-0" />
                       ) : (
-                        <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs text-gray-400">No img</span>
+                        <div className="h-10 w-10 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs text-slate-400">No img</span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate">{product.name}</p>
-                        <p className="text-xs text-gray-500">Price: {formatCurrency(product.price, currency)} | Stock: {inventory.find((entry) => entry.productId === product.id)?.quantity ?? 0}</p>
+                        <p className="font-medium text-sm truncate text-slate-900">{product.name}</p>
+                        <p className="text-xs text-slate-500">
+                          {formatCurrency(product.price, currency)} | Stock: {inventory.find((entry) => entry.productId === product.id)?.quantity ?? 0}
+                        </p>
                       </div>
-                      <span className="text-blue-500 text-xs font-medium">+ Add</span>
+                      <span className="text-blue-600 text-xs font-semibold">+ Add</span>
                     </div>
                   ))}
                 </div>
               )}
               {searchQuery.length > 0 && searchResults.length === 0 && (
-                <div className="absolute top-full left-0 right-0 z-50 bg-white border border-gray-200 rounded-lg shadow-xl mt-1 px-4 py-3 text-sm text-gray-500">
+                <div className="absolute top-full left-0 right-0 z-50 mt-1 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-lg">
                   No products found
                 </div>
               )}
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-900">Cart summary</p>
-            <p className="mt-2 text-sm text-slate-600">Tap a product to add it to the cart.</p>
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-bold text-slate-900">Cart summary</p>
+            <p className="mt-1 text-sm text-slate-600">Tap a product to add it to the cart.</p>
           </div>
 
           <div className="overflow-x-auto">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
-                <tr className="border-b border-slate-200 text-slate-600">
+                <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Price</th>
                   <th className="px-4 py-3">Qty</th>
@@ -450,16 +452,21 @@ export default function Sales() {
                   <th className="px-4 py-3">Action</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody className="divide-y divide-slate-200">
                 {cart.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-4 py-6 text-center text-slate-500">
-                      No items in the cart.
+                    <td colSpan={5} className="px-4 py-8 text-center">
+                      <div className="flex flex-col items-center text-slate-500">
+                        <svg className="h-10 w-10 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 00-3 3v1.585a2.25 2.25 0 002.25 2.25h10.5A2.25 2.25 0 0019.5 18.835v-1.585a3 3 0 00-3-3m-6 0h6" />
+                        </svg>
+                        <p className="text-sm">No items in the cart</p>
+                      </div>
                     </td>
                   </tr>
                 ) : (
                   cart.map((item) => (
-                    <tr key={item.productId} className="border-b border-slate-200 hover:bg-slate-50">
+                    <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-4 font-semibold text-slate-900">{item.productName}</td>
                       <td className="px-4 py-4 text-slate-700">{formatCurrency(item.unitPrice, currency)}</td>
                       <td className="px-4 py-4">
@@ -468,17 +475,17 @@ export default function Sales() {
                           min={1}
                           value={item.qty}
                           onChange={(event) => updateQty(item.productId, Number(event.target.value))}
-                          className="w-24 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-brand-500"
+                          className="w-20 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-center outline-none transition-colors focus:border-blue-500"
                         />
                       </td>
-                      <td className="px-4 py-4 text-slate-700">{formatCurrency(item.subtotal, currency)}</td>
+                      <td className="px-4 py-4 font-semibold text-slate-900">{formatCurrency(item.subtotal, currency)}</td>
                       <td className="px-4 py-4">
                         <button
                           type="button"
                           onClick={() => removeItem(item.productId)}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700 hover:bg-red-100"
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                           Remove
                         </button>
                       </td>
@@ -490,22 +497,22 @@ export default function Sales() {
           </div>
         </section>
 
-        <section className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5 shadow-panel">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm text-slate-600">Order summary</p>
-            <div className="mt-4 space-y-3 text-sm text-slate-700">
+        <section className="space-y-4 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Order summary</p>
+            <div className="mt-4 space-y-3 text-sm">
               <div className="flex items-center justify-between">
-                <span>Subtotal</span>
-                <span>{formatCurrency(subtotal, currency)}</span>
+                <span className="text-slate-600">Subtotal</span>
+                <span className="font-semibold text-slate-900">{formatCurrency(subtotal, currency)}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span>Discount</span>
+                <span className="text-slate-600">Discount</span>
                 <input
                   type="number"
                   min={0}
                   value={discount}
                   onChange={(event) => setDiscount(Number(event.target.value))}
-                  className="w-28 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-brand-500"
+                  className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-right outline-none transition-colors focus:border-blue-500"
                 />
               </div>
 
