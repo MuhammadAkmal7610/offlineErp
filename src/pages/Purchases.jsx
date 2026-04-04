@@ -21,6 +21,7 @@ export default function Purchases() {
     quantity: 1,
     costPrice: 0,
     date: new Date().toISOString().slice(0, 10),
+    expiryDate: '',
     note: '',
   });
 
@@ -63,17 +64,28 @@ export default function Purchases() {
       totalCost,
       supplier: selectedSupplier?.name,
       date: new Date(form.date).toISOString(),
+      expiryDate: form.expiryDate || null,
       note: form.note,
     };
     const id = await currentDB.purchases.add(purchase);
     setPurchases((current) => [{ ...purchase, id }, ...current]);
     const inventoryItem = await currentDB.inventory.where('productId').equals(selectedProduct.id).first();
+    if (form.expiryDate) {
+      await currentDB.products.update(selectedProduct.id, { expiryDate: form.expiryDate });
+    }
+
     if (inventoryItem && inventoryItem.id) {
       const updatedQuantity = inventoryItem.quantity + form.quantity;
-      await currentDB.inventory.update(inventoryItem.id, { quantity: updatedQuantity, lastUpdated: new Date().toISOString() });
+      await currentDB.inventory.update(inventoryItem.id, {
+        quantity: updatedQuantity,
+        lastUpdated: new Date().toISOString(),
+        expiryDate: form.expiryDate || inventoryItem.expiryDate || null,
+      });
       setInventory((current) =>
         current.map((item) =>
-          item.id === inventoryItem.id ? { ...item, quantity: updatedQuantity, lastUpdated: new Date().toISOString() } : item
+          item.id === inventoryItem.id
+            ? { ...item, quantity: updatedQuantity, lastUpdated: new Date().toISOString(), expiryDate: form.expiryDate || inventoryItem.expiryDate || null }
+            : item
         )
       );
     } else {
@@ -82,6 +94,7 @@ export default function Purchases() {
         quantity: form.quantity,
         lowStockThreshold: 5,
         lastUpdated: new Date().toISOString(),
+        expiryDate: form.expiryDate || null,
       });
       setInventory((current) => [
         ...current,
@@ -191,6 +204,15 @@ export default function Purchases() {
               />
             </label>
             <label className="space-y-2 text-sm text-slate-700">
+              <span>Expiry Date (optional)</span>
+              <input
+                type="date"
+                value={form.expiryDate}
+                onChange={(event) => setForm((current) => ({ ...current, expiryDate: event.target.value }))}
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand-500"
+              />
+            </label>
+            <label className="space-y-2 text-sm text-slate-700">
               <span>Note</span>
               <textarea
                 value={form.note}
@@ -217,7 +239,7 @@ export default function Purchases() {
       </div>
 
       <PrintWrapper title="Purchase Report" printLabel="Purchase Report">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-100 text-slate-700">

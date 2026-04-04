@@ -1,5 +1,8 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, session } = require('electron');
 const path = require('path');
+
+// Make sure Electron has a writable userData path to avoid cache/quota lock issues
+app.setPath('userData', path.join(app.getPath('appData'), 'ERP Application'));
 
 function createWindow() {
   const win = new BrowserWindow({

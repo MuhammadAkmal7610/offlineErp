@@ -33,6 +33,7 @@ export default function Sales() {
   const [fromDate, setFromDate] = useState(() => new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().substring(0, 10));
   const [toDate, setToDate] = useState(() => new Date().toISOString().substring(0, 10));
   const [viewSale, setViewSale] = useState(null);
+  const [returningSale, setReturningSale] = useState(null);
   const receiptRef = useRef(null);
   const barcodeRef = useRef(null);
   const [barcodeValue, setBarcodeValue] = useState('');
@@ -128,11 +129,23 @@ export default function Sales() {
     if (existing) {
       setCart((current) =>
         current.map((item) =>
-          item.productId === product.id ? { ...item, qty: item.qty + 1, subtotal: (item.qty + 1) * item.unitPrice } : item
+          item.productId === product.id
+            ? { ...item, qty: item.qty + 1, subtotal: (item.qty + 1) * item.unitPrice }
+            : item
         )
       );
     } else {
-      setCart((current) => [...current, { productId: product.id, productName: product.name, qty: 1, unitPrice: product.price, subtotal: product.price }]);
+      setCart((current) => [
+        ...current,
+        {
+          productId: product.id,
+          productName: product.name,
+          qty: 1,
+          unitPrice: product.price,
+          subtotal: product.price,
+          expiryDate: product.expiryDate || null,
+        },
+      ]);
     }
     setSearchQuery('');
   };
@@ -210,6 +223,7 @@ export default function Sales() {
       paymentMethod: selectedStudent ? 'student_account' : paymentMethod,
       studentId: selectedStudent?.id ?? null,
       date: saleDate,
+      returned: false,
     };
     const id = await currentDB.sales.add(sale);
     
@@ -265,6 +279,65 @@ export default function Sales() {
     const salesData = await currentDB.sales.toArray();
     const studentData = await currentDB.students.toArray();
     loadSalesList(salesData, studentData);
+  };
+
+  const returnSale = async (sale) => {
+    if (!sale || sale.returned) {
+      alert('This sale has already been returned.');
+      return;
+    }
+
+    if (!confirm('Are you sure you want to return this sale and restore stock?')) {
+      return;
+    }
+
+    const currentDB = getDB(activeBusiness);
+
+    // Return inventory
+    await Promise.all(
+      sale.items.map(async (item) => {
+        const inventoryItem = await currentDB.inventory.where('productId').equals(item.productId).first();
+        if (inventoryItem && inventoryItem.id) {
+          const newQty = Math.max(0, inventoryItem.quantity + item.qty);
+          await currentDB.inventory.update(inventoryItem.id, { quantity: newQty, lastUpdated: new Date().toISOString() });
+        }
+
+        await currentDB.salesReturns.add({
+          originalSaleId: sale.id,
+          productId: item.productId,
+          productName: item.productName,
+          quantity: item.qty,
+          refundAmount: item.subtotal,
+          reason: 'Customer return',
+          refundMethod: sale.paymentMethod,
+          studentId: sale.studentId || null,
+          date: new Date().toISOString(),
+        });
+      })
+    );
+
+    if (sale.studentId) {
+      await currentDB.studentLedger.add({
+        studentId: sale.studentId,
+        type: 'payment',
+        amount: -sale.totalAmount,
+        description: `Return refund for sale #${sale.id}`,
+        date: new Date().toISOString(),
+      });
+    }
+
+    await currentDB.sales.update(sale.id, { returned: true });
+
+    // Refresh data
+    const updatedInventory = await currentDB.inventory.toArray();
+    const updatedSales = await currentDB.sales.toArray();
+    const studentData = await currentDB.students.toArray();
+
+    setInventory(updatedInventory);
+    loadSalesList(updatedSales, studentData);
+
+    setViewSale(null);
+    alert('Sale returned and inventory restored successfully.');
   };
 
   const printReceipt = () => {
@@ -441,12 +514,13 @@ export default function Sales() {
             <p className="mt-1 text-sm text-slate-600">Tap a product to add it to the cart.</p>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
             <table className="w-full min-w-[720px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
                   <th className="px-4 py-3">Product</th>
                   <th className="px-4 py-3">Price</th>
+                  <th className="px-4 py-3">Expiry</th>
                   <th className="px-4 py-3">Qty</th>
                   <th className="px-4 py-3">Subtotal</th>
                   <th className="px-4 py-3">Action</th>
@@ -469,6 +543,7 @@ export default function Sales() {
                     <tr key={item.productId} className="hover:bg-slate-50 transition-colors">
                       <td className="px-4 py-4 font-semibold text-slate-900">{item.productName}</td>
                       <td className="px-4 py-4 text-slate-700">{formatCurrency(item.unitPrice, currency)}</td>
+                      <td className="px-4 py-4 text-slate-700">{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '-'}</td>
                       <td className="px-4 py-4">
                         <input
                           type="number"
@@ -688,7 +763,7 @@ export default function Sales() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-gray-600">
@@ -721,9 +796,18 @@ export default function Sales() {
                     <td className="py-3 px-4 text-sm font-medium">{formatCurrency(sale.totalAmount, currency)}</td>
                     <td className="py-3 px-4">
                       <div className="flex gap-2">
-                        <button onClick={() => setViewSale(sale)}
-                          className="text-blue-600 text-xs border border-blue-200 px-2 py-1 rounded hover:bg-blue-50">
+                        <button
+                          onClick={() => setViewSale(sale)}
+                          className="text-blue-600 text-xs border border-blue-200 px-2 py-1 rounded hover:bg-blue-50"
+                        >
                           👁 View
+                        </button>
+                        <button
+                          onClick={() => returnSale(sale)}
+                          className={`text-sm rounded px-2 py-1 ${sale.returned ? 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed' : 'border border-red-200 text-red-600 hover:bg-red-50'}`}
+                          disabled={sale.returned}
+                        >
+                          ↩ Return
                         </button>
                       </div>
                     </td>
@@ -745,6 +829,12 @@ export default function Sales() {
                 <span>{new Date(viewSale.date).toLocaleString()}</span>
               </div>
               <div className="flex justify-between text-sm">
+                <span className="text-gray-500">Return status:</span>
+                <span className={viewSale.returned ? 'text-red-600 font-semibold' : 'text-emerald-600 font-semibold'}>
+                  {viewSale.returned ? 'Returned' : 'Active'}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Customer:</span>
                 <span>{viewSale.studentName}</span>
               </div>
@@ -753,26 +843,28 @@ export default function Sales() {
                 <span>{viewSale.paymentMethod}</span>
               </div>
             </div>
-            <table className="w-full text-sm mb-4">
-              <thead>
-                <tr className="bg-gray-50">
-                  <th className="text-left p-2">Product</th>
-                  <th className="text-right p-2">Qty</th>
-                  <th className="text-right p-2">Price</th>
-                  <th className="text-right p-2">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {viewSale.items?.map((item, i) => (
-                  <tr key={i} className="border-b">
-                    <td className="p-2">{item.productName}</td>
-                    <td className="p-2 text-right">{item.qty}</td>
-                    <td className="p-2 text-right">{formatCurrency(item.unitPrice, currency)}</td>
-                    <td className="p-2 text-right">{formatCurrency(item.subtotal, currency)}</td>
+            <div className="overflow-x-auto overflow-y-auto max-h-[40vh] rounded-xl border border-slate-200 mb-4">
+              <table className="w-full text-sm mb-4">
+                <thead>
+                  <tr className="bg-gray-50">
+                    <th className="text-left p-2">Product</th>
+                    <th className="text-right p-2">Qty</th>
+                    <th className="text-right p-2">Price</th>
+                    <th className="text-right p-2">Total</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {viewSale.items?.map((item, i) => (
+                    <tr key={i} className="border-b">
+                      <td className="p-2">{item.productName}</td>
+                      <td className="p-2 text-right">{item.qty}</td>
+                      <td className="p-2 text-right">{formatCurrency(item.unitPrice, currency)}</td>
+                      <td className="p-2 text-right">{formatCurrency(item.subtotal, currency)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div className="flex justify-between font-bold border-t pt-2">
               <span>Total</span>
               <span>{formatCurrency(viewSale.totalAmount, currency)}</span>
@@ -781,6 +873,15 @@ export default function Sales() {
               <button onClick={() => printReceipt()}
                 className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm">
                 🖨 Print Receipt
+              </button>
+              <button
+                onClick={() => {
+                  if (!viewSale.returned) returnSale(viewSale);
+                }}
+                className={`flex-1 py-2 rounded-lg text-sm ${viewSale.returned ? 'bg-slate-100 text-slate-500 cursor-not-allowed border border-slate-200' : 'bg-red-500 text-white hover:bg-red-600'}`}
+                disabled={viewSale.returned}
+              >
+                {viewSale.returned ? 'Already Returned' : '↩ Make Return'}
               </button>
               <button onClick={() => setViewSale(null)}
                 className="flex-1 border py-2 rounded-lg text-sm">
@@ -836,7 +937,10 @@ export default function Sales() {
                   <div key={item.productId} className="flex items-center justify-between gap-3">
                     <div>
                       <p className="font-semibold">{item.productName}</p>
-                      <p className="text-sm text-slate-600">{item.qty} × {formatCurrency(item.unitPrice, currency)}</p>
+                      <p className="text-sm text-slate-600">
+                        {item.qty} × {formatCurrency(item.unitPrice, currency)}
+                        {item.expiryDate ? ` | Expiry ${new Date(item.expiryDate).toLocaleDateString()}` : ''}
+                      </p>
                     </div>
                     <p className="font-semibold">{formatCurrency(item.subtotal, currency)}</p>
                   </div>

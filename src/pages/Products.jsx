@@ -31,6 +31,7 @@ export default function Products() {
     price: 0,
     costPrice: 0,
     unit: 'pcs',
+    expiryDate: '',
     image: DEFAULT_IMAGE,
     description: '',
     createdAt: new Date().toISOString(),
@@ -71,6 +72,7 @@ export default function Products() {
       price: 0,
       costPrice: 0,
       unit: 'pcs',
+      expiryDate: '',
       image: DEFAULT_IMAGE,
       description: '',
       createdAt: new Date().toISOString(),
@@ -81,7 +83,10 @@ export default function Products() {
   const openEditProduct = (product) => {
     setSelectedProduct(product);
     setTempPreviewBarcode(product.barcode?.trim() || `SHOP-TEMP-${Date.now()}`);
-    setForm(product);
+    setForm({
+      ...product,
+      expiryDate: product.expiryDate || '',
+    });
     setOpenForm(true);
   };
 
@@ -173,19 +178,20 @@ export default function Products() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                <th className="px-4 py-3">Product</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">Barcode</th>
-                <th className="px-4 py-3">Sale Price</th>
-                <th className="px-4 py-3">Cost Price</th>
-                <th className="px-4 py-3">Unit</th>
-                <th className="px-4 py-3">Stock</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
+                  <th className="px-4 py-3">Product</th>
+                  <th className="px-4 py-3">Category</th>
+                  <th className="px-4 py-3">Barcode</th>
+                  <th className="px-4 py-3">Sale Price</th>
+                  <th className="px-4 py-3">Cost Price</th>
+                  <th className="px-4 py-3">Unit</th>
+                  <th className="px-4 py-3">Expiry</th>
+                  <th className="px-4 py-3">Stock</th>
+                  <th className="px-4 py-3">Actions</th>
+                </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredProducts.map((product) => (
@@ -216,6 +222,9 @@ export default function Products() {
                   <td className="px-4 py-4 font-semibold text-slate-900">{formatCurrency(product.price, currency)}</td>
                   <td className="px-4 py-4 text-slate-600">{formatCurrency(product.costPrice, currency)}</td>
                   <td className="px-4 py-4 text-slate-600 text-xs">{product.unit}</td>
+                  <td className="px-4 py-4 text-slate-600 text-xs">
+                    {product.expiryDate ? new Date(product.expiryDate).toLocaleDateString() : '-'}
+                  </td>
                   <td className="px-4 py-4">
                     <span className={`inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-semibold ${
                       (productInventory(product.id)?.quantity ?? 0) <= 0
@@ -368,6 +377,18 @@ export default function Products() {
                       onChange={(event) => setForm((current) => ({ ...current, costPrice: Number(event.target.value) }))}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
+                    />
+                  </label>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <label className="space-y-2">
+                    <span className="text-sm font-medium text-slate-700">Expiry Date (optional)</span>
+                    <input
+                      type="date"
+                      value={form.expiryDate || ''}
+                      onChange={(event) => setForm((current) => ({ ...current, expiryDate: event.target.value }))}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                     />
                   </label>
                 </div>

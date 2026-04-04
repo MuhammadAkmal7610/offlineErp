@@ -64,7 +64,7 @@ export default function Navbar() {
         <span>{shopName}</span>
       </button>
 
-      <nav className="hidden w-72 flex-none flex-col border-r border-slate-200 bg-white px-4 py-6 text-slate-800 lg:flex">
+      <nav className="hidden w-72 flex-none flex-col border-r border-slate-200 bg-white px-4 py-6 text-slate-800 lg:flex sticky top-0 max-h-screen overflow-y-auto">
         {/* Business Switcher */}
         <div className="mb-6">
           <button

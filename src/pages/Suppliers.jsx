@@ -139,7 +139,7 @@ export default function Suppliers() {
           <h2 className="text-lg font-semibold text-slate-900">Supplier list</h2>
           <p className="text-sm text-slate-500">{suppliers.length} suppliers</p>
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-slate-600">

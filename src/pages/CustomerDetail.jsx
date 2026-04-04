@@ -217,7 +217,7 @@ export default function CustomerDetail() {
       <div className="bg-white rounded-lg shadow p-6">
         <h3 className="text-lg font-semibold mb-4">📋 Transaction History</h3>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full">
             <thead>
               <tr className="border-b">

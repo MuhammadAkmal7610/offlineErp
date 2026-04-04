@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { RefreshCw, Download, Upload, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useSettings } from '@/hooks/useSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
@@ -17,6 +17,9 @@ export default function Settings() {
   const [saved, setSaved] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetDone, setResetDone] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState(null);
 
   // Update form when settings load
   useEffect(() => {
@@ -61,6 +64,160 @@ export default function Settings() {
     }
   };
 
+  useEffect(() => {
+    const preventDefault = (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    window.addEventListener('dragover', preventDefault);
+    window.addEventListener('drop', preventDefault);
+
+    return () => {
+      window.removeEventListener('dragover', preventDefault);
+      window.removeEventListener('drop', preventDefault);
+    };
+  }, []);
+
+  const handleExportData = async () => {
+    setExporting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      const exportBusiness = activeBusiness || 'general';
+      const exportData = {
+        business: exportBusiness,
+        exportDate: new Date().toISOString(),
+        data: {
+          products: await currentDB.products.toArray(),
+          inventory: await currentDB.inventory.toArray(),
+          purchases: await currentDB.purchases.toArray(),
+          sales: await currentDB.sales.toArray(),
+          suppliers: await currentDB.suppliers.toArray(),
+          expenses: await currentDB.expenses.toArray(),
+          students: await currentDB.students.toArray(),
+          studentLedger: await currentDB.studentLedger.toArray(),
+          salesReturns: await currentDB.salesReturns.toArray(),
+          settings: await currentDB.settings.toArray(),
+          customers: await currentDB.customers.toArray(),
+          customerLedger: await currentDB.customerLedger.toArray(),
+        }
+      };
+      
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `backup-${exportBusiness}-${new Date().toISOString().substring(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export data. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleImportData = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportMessage(null);
+    try {
+      const fileContent = await file.text();
+      const importData = JSON.parse(fileContent);
+      
+      // Check if business matches, but allow import if business field is missing (backward compatibility)
+      if (importData.business && importData.business !== activeBusiness) {
+        const confirmed = window.confirm(`Backup is for ${importData.business} business, but you are importing to ${activeBusiness} business. Continue anyway?`);
+        if (!confirmed) return;
+      }
+
+      const currentDB = getDB(activeBusiness);
+      
+      // Clear existing data
+      await Promise.all([
+        currentDB.products.clear(),
+        currentDB.inventory.clear(),
+        currentDB.purchases.clear(),
+        currentDB.sales.clear(),
+        currentDB.suppliers.clear(),
+        currentDB.expenses.clear(),
+        currentDB.students.clear(),
+        currentDB.studentLedger.clear(),
+        currentDB.salesReturns.clear(),
+        currentDB.customers.clear(),
+        currentDB.customerLedger.clear(),
+      ]);
+
+      // Import new data
+      await Promise.all([
+        currentDB.products.bulkPut(importData.data.products || []),
+        currentDB.inventory.bulkPut(importData.data.inventory || []),
+        currentDB.purchases.bulkPut(importData.data.purchases || []),
+        currentDB.sales.bulkPut(importData.data.sales || []),
+        currentDB.suppliers.bulkPut(importData.data.suppliers || []),
+        currentDB.expenses.bulkPut(importData.data.expenses || []),
+        currentDB.students.bulkPut(importData.data.students || []),
+        currentDB.studentLedger.bulkPut(importData.data.studentLedger || []),
+        currentDB.salesReturns.bulkPut(importData.data.salesReturns || []),
+        currentDB.customers.bulkPut(importData.data.customers || []),
+        currentDB.customerLedger.bulkPut(importData.data.customerLedger || []),
+      ]);
+
+      // Import settings
+      if (importData.data.settings && Array.isArray(importData.data.settings)) {
+        for (const setting of importData.data.settings) {
+          await currentDB.settings.put(setting);
+        }
+      }
+
+      setImportMessage({ type: 'success', text: 'Data imported successfully! Refresh the page to see changes.' });
+      setTimeout(() => setImportMessage(null), 5000);
+    } catch (error) {
+      console.error('Import failed:', error);
+      setImportMessage({ type: 'error', text: `Import failed: ${error.message}` });
+      setTimeout(() => setImportMessage(null), 5000);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
+
+  const handleClearAllData = async () => {
+    if (!confirm('Are you sure you want to permanently delete ALL data for this business? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const currentDB = getDB(activeBusiness);
+      await Promise.all([
+        currentDB.products.clear(),
+        currentDB.inventory.clear(),
+        currentDB.purchases.clear(),
+        currentDB.sales.clear(),
+        currentDB.suppliers.clear(),
+        currentDB.expenses.clear(),
+        currentDB.students.clear(),
+        currentDB.studentLedger.clear(),
+        currentDB.salesReturns.clear(),
+        currentDB.customers.clear(),
+        currentDB.customerLedger.clear(),
+        currentDB.settings.clear(),
+      ]);
+      setImportMessage({ type: 'success', text: 'All data cleared successfully!' });
+      setTimeout(() => { window.location.reload(); }, 2000);
+    } catch (error) {
+      console.error('Clear failed:', error);
+      setImportMessage({ type: 'error', text: `Failed to clear data: ${error.message}` });
+      setTimeout(() => setImportMessage(null), 5000);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Settings" description="Configure your shop preferences" />
@@ -69,7 +226,7 @@ export default function Settings() {
         <form onSubmit={handleSave} className="space-y-6">
           <div>
             <h3 className="text-base font-bold text-slate-900 mb-4">Shop Information</h3>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-slate-700">Shop Name</span>
                 <input
@@ -159,6 +316,58 @@ export default function Settings() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h3 className="text-base font-bold text-slate-900 mb-4">Data Management</h3>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Export Button */}
+          <button
+            onClick={handleExportData}
+            disabled={exporting}
+            className="flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 px-6 py-4 text-sm font-semibold text-slate-700 hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className={`h-5 w-5 ${exporting ? 'animate-spin' : ''}`} />
+            {exporting ? 'Exporting...' : 'Export All Data'}
+          </button>
+
+          {/* Import Button */}
+          <label className="flex flex-col items-center gap-3 rounded-xl border-2 border-slate-200 bg-slate-50 px-6 py-4 text-sm font-semibold text-slate-700 hover:border-green-500 hover:bg-green-50 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+            <Upload className={`h-5 w-5 ${importing ? 'animate-spin' : ''}`} />
+            {importing ? 'Importing...' : 'Import JSON Backup'}
+            <input
+              type="file"
+              accept=".json"
+              onChange={handleImportData}
+              disabled={importing}
+              className="hidden"
+            />
+          </label>
+
+          {/* Clear Button */}
+          <button
+            onClick={handleClearAllData}
+            className="flex flex-col items-center gap-3 rounded-xl border-2 border-red-200 bg-red-50 px-6 py-4 text-sm font-semibold text-red-700 hover:border-red-500 hover:bg-red-100 transition-all"
+          >
+            <Trash2 className="h-5 w-5" />
+            Clear All Data
+          </button>
+        </div>
+
+        {importMessage && (
+          <div className={`mt-4 p-4 rounded-lg flex items-center gap-2 ${
+            importMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+          }`}>
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              {importMessage.type === 'success' ? (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              ) : (
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              )}
+            </svg>
+            {importMessage.text}
+          </div>
+        )}
+      </div>
+
+      {/* <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <h3 className="text-base font-bold text-slate-900 mb-4">Current Configuration</h3>
         <div className="space-y-3">
           <div className="flex justify-between py-2.5 px-3 rounded-lg bg-slate-50">
@@ -178,7 +387,7 @@ export default function Settings() {
             <span className="text-sm font-semibold text-slate-900">{settings?.phone || 'Not set'}</span>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }

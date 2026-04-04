@@ -159,7 +159,7 @@ export default function Expenses() {
               ))}
             </select>
           </div>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
             <table className="w-full min-w-[700px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-100 text-slate-700">

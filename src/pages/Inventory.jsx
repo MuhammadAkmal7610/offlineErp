@@ -39,6 +39,7 @@ export default function Inventory() {
           productName: product?.name ?? 'Unknown',
           category: product?.category ?? '',
           unit: product?.unit ?? '',
+          expiryDate: product?.expiryDate || '',
         };
       })
       .filter((item) => {
@@ -97,7 +98,7 @@ export default function Inventory() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-slate-600">
@@ -105,6 +106,7 @@ export default function Inventory() {
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Current Stock</th>
                 <th className="px-4 py-3">Unit</th>
+                <th className="px-4 py-3">Expiry</th>
                 <th className="px-4 py-3">Low Threshold</th>
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Actions</th>
@@ -121,6 +123,7 @@ export default function Inventory() {
                     <td className="px-4 py-4 text-slate-700">{item.category}</td>
                     <td className="px-4 py-4 text-slate-700">{item.quantity}</td>
                     <td className="px-4 py-4 text-slate-700">{item.unit}</td>
+                    <td className="px-4 py-4 text-slate-700">{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '-'}</td>
                     <td className="px-4 py-4 text-slate-700">{item.lowStockThreshold}</td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>{status}</span>
@@ -144,13 +147,14 @@ export default function Inventory() {
       </div>
 
       <PrintWrapper title="Inventory Report" printLabel="Inventory Report">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-100 text-slate-700">
                 <th className="px-4 py-3">Product</th>
                 <th className="px-4 py-3">Category</th>
                 <th className="px-4 py-3">Current Stock</th>
+                <th className="px-4 py-3">Expiry</th>
                 <th className="px-4 py-3">Low Threshold</th>
                 <th className="px-4 py-3">Last Updated</th>
               </tr>
@@ -161,6 +165,7 @@ export default function Inventory() {
                   <td className="px-4 py-3">{item.productName}</td>
                   <td className="px-4 py-3">{item.category}</td>
                   <td className="px-4 py-3">{item.quantity}</td>
+                  <td className="px-4 py-3">{item.expiryDate ? new Date(item.expiryDate).toLocaleDateString() : '-'}</td>
                   <td className="px-4 py-3">{item.lowStockThreshold}</td>
                   <td className="px-4 py-3">{formatDate(item.lastUpdated)}</td>
                 </tr>

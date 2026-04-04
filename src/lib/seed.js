@@ -715,7 +715,9 @@ export async function seedDatabase(targetDB, businessType = 'general') {
   }
 
   // Add products and create inventory items
-  const productIds = await Promise.all(products.map((product) => targetDB.products.add(product)));
+  await targetDB.products.bulkAdd(products);
+  const allProducts = await targetDB.products.toArray();
+  const productIds = allProducts.map((p) => p.id);
   const inventoryItems = productIds.map((productId) => ({
     productId,
     quantity: Math.floor(Math.random() * 50) + 10, // Random stock between 10-60
@@ -724,7 +726,9 @@ export async function seedDatabase(targetDB, businessType = 'general') {
   }));
 
   // Add suppliers
-  const supplierIds = await Promise.all(suppliers.map((s) => targetDB.suppliers.add(s)));
+  await targetDB.suppliers.bulkAdd(suppliers);
+  const allSuppliers = await targetDB.suppliers.toArray();
+  const supplierIds = allSuppliers.map((s) => s.id);
 
   // Add expenses
   await targetDB.expenses.bulkAdd(expenses);
@@ -769,7 +773,9 @@ export async function seedDatabase(targetDB, businessType = 'general') {
 
   // Add students or customers based on business type
   if (studentData) {
-    const studentIds = await Promise.all(studentData.students.map((student) => targetDB.students.add(student)));
+    await targetDB.students.bulkAdd(studentData.students);
+    const allStudents = await targetDB.students.toArray();
+    const studentIds = allStudents.map((s) => s.id);
     const studentLedgerWithIds = studentData.ledger.map((entry) => ({
       ...entry,
       studentId: studentIds[entry.studentId - 1],
@@ -778,7 +784,9 @@ export async function seedDatabase(targetDB, businessType = 'general') {
   }
 
   if (customerData) {
-    const customerIds = await Promise.all(customerData.customers.map((customer) => targetDB.customers.add(customer)));
+    await targetDB.customers.bulkAdd(customerData.customers);
+    const allCustomers = await targetDB.customers.toArray();
+    const customerIds = allCustomers.map((c) => c.id);
     const customerLedgerWithIds = customerData.ledger.map((entry) => ({
       ...entry,
       customerId: customerIds[entry.customerId - 1],

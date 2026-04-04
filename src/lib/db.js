@@ -19,6 +19,22 @@ export class ShopDatabase extends Dexie {
       customers: '++id,name,phone,email',
       customerLedger: '++id,customerId,type,amount,description,date',
     });
+
+    // Add a version upgrade path to include expiry date fields for cosmetics and product tracking
+    this.version(2).stores({
+      products: '++id,name,category,barcode,price,costPrice,unit,createdAt,expiryDate',
+      inventory: '++id,productId,quantity,lowStockThreshold,lastUpdated,expiryDate',
+      purchases: '++id,productId,productName,quantity,costPrice,totalCost,supplier,date,expiryDate',
+      sales: '++id,date,totalAmount,discount,paymentMethod,studentId',
+      suppliers: '++id,name,phone,email,address,createdAt',
+      expenses: '++id,title,amount,category,date',
+      students: '++id,name,fatherName,rollNumber,phone,fatherPhone,class,address,createdAt',
+      studentLedger: '++id,studentId,type,amount,description,date',
+      salesReturns: '++id,originalSaleId,productId,productName,quantity,refundAmount,reason,refundMethod,studentId,date',
+      settings: 'key',
+      customers: '++id,name,phone,email',
+      customerLedger: '++id,customerId,type,amount,description,date',
+    });
   }
 }
 
@@ -45,14 +61,60 @@ export const setDB = (business) => {
   db = getDB(business);
 };
 
+// Safely open database with fallback for transient IndexedDB / Dexie errors
+async function safeOpenDB(targetDB) {
+  try {
+    await targetDB.open();
+    return targetDB;
+  } catch (error) {
+    console.warn(`Dexie open failed for ${targetDB.name}; attempting recovery...`, error);
+    
+    try {
+      await targetDB.close();
+    } catch (closeError) {
+      console.warn(`Failed to close DB ${targetDB.name}`, closeError);
+    }
+
+    // If it's a ConstraintError, clear the database and retry
+    if (error.name === 'ConstraintError' || error.message?.includes('ConstraintError')) {
+      console.warn(`ConstraintError detected, clearing database ${targetDB.name}...`);
+      try {
+        await targetDB.delete();
+      } catch (deleteError) {
+        console.warn(`Failed to delete DB ${targetDB.name}`, deleteError);
+      }
+    }
+
+    // Attempt to reopen after cleanup
+    try {
+      await targetDB.open();
+      return targetDB;
+    } catch (retryError) {
+      console.error(`Failed to recover DB ${targetDB.name}`, retryError);
+      throw retryError;
+    }
+  }
+}
+
 // Initialize a specific database
 export async function initDB(business = 'general') {
   const targetDB = getDB(business);
-  await targetDB.open();
+  await safeOpenDB(targetDB);
   await deduplicateProducts(targetDB);
   const count = await targetDB.products.count();
   if (count === 0) {
-    await seedDatabase(targetDB, business);
+    try {
+      await seedDatabase(targetDB, business);
+    } catch (error) {
+      console.error(`Seeding failed for ${business} database:`, error);
+      // If seeding fails due to constraint errors, try force reinit
+      if (error.name === 'ConstraintError') {
+        console.warn(`ConstraintError during seeding, clearing and retrying...`);
+        await forceInitDB(business);
+      } else {
+        throw error;
+      }
+    }
   }
   return targetDB;
 }
@@ -60,7 +122,7 @@ export async function initDB(business = 'general') {
 // Force reinitialize a database with business-specific seed data
 export async function forceInitDB(business = 'general') {
   const targetDB = getDB(business);
-  await targetDB.open();
+  await safeOpenDB(targetDB);
   
   // Clear all tables
   await targetDB.products.clear();
@@ -176,7 +238,7 @@ export async function exportAllDatabases() {
 // Reset a specific database and re-seed with business-specific data
 export async function resetDatabase(business = 'general') {
   const targetDB = getDB(business);
-  await targetDB.open();
+  await safeOpenDB(targetDB);
   
   // Clear all tables
   await targetDB.products.clear();

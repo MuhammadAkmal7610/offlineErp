@@ -174,8 +174,8 @@ export default function Customers() {
         </div>
       </div>
 
-      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh] rounded-xl border border-slate-200">
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
