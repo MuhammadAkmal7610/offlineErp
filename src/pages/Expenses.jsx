@@ -2,9 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import PrintWrapper from '@/components/PrintWrapper';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { initDB, getDB } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useBusiness } from '@/contexts/BusinessContext';
 
 const categories = ['Rent', 'Utilities', 'Transport', 'Other'];
@@ -15,6 +17,7 @@ export default function Expenses() {
   const [form, setForm] = useState({ title: '', amount: '', category: 'Other', date: new Date().toISOString().slice(0, 10), note: '' });
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
+  const { selectedIds, isSelected, toggleOne, toggleAll, clearSelection, isAllSelected, selectedCount } = useMultiSelect(expenses);
   const [filterCategory, setFilterCategory] = useState('All');
 
   useEffect(() => {
@@ -63,6 +66,19 @@ export default function Expenses() {
     setExpenses((current) => current.filter((item) => item.id !== expense.id));
   };
 
+  const deleteSelected = async () => {
+    if (selectedCount === 0) return;
+    const confirmed = window.confirm(`Delete ${selectedCount} expenses?`);
+    if (!confirmed) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedIds) {
+      await currentDB.expenses.delete(id);
+    }
+    setExpenses((prev) => prev.filter((e) => !selectedIds.includes(e.id)));
+    clearSelection();
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Expenses" description="Track every shop expense and print monthly totals" />
@@ -87,6 +103,7 @@ export default function Expenses() {
                   step="0.01"
                   value={form.amount}
                   onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}
+                  onFocus={e => e.target.select()}
                   className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand-500"
                   required
                 />
@@ -163,6 +180,14 @@ export default function Expenses() {
             <table className="w-full min-w-[700px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-100 text-slate-700">
+                  <th className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={isAllSelected}
+                      onChange={toggleAll}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </th>
                   <th className="px-4 py-3">Date</th>
                   <th className="px-4 py-3">Title</th>
                   <th className="px-4 py-3">Category</th>
@@ -173,7 +198,15 @@ export default function Expenses() {
               </thead>
               <tbody>
                 {filtered.map((expense) => (
-                  <tr key={expense.id} className="border-b border-slate-200 hover:bg-slate-50">
+                  <tr key={expense.id} className={isSelected(expense.id) ? 'bg-red-50' : 'border-b border-slate-200 hover:bg-slate-50'}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isSelected(expense.id)}
+                        onChange={() => toggleOne(expense.id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="px-4 py-3">{formatDate(expense.date)}</td>
                     <td className="px-4 py-3 font-semibold text-slate-900">{expense.title}</td>
                     <td className="px-4 py-3 text-slate-700">{expense.category}</td>
@@ -195,6 +228,13 @@ export default function Expenses() {
           </div>
         </div>
       </PrintWrapper>
+
+      <BulkDeleteBar
+        selectedCount={selectedCount}
+        onDelete={deleteSelected}
+        onCancel={clearSelection}
+        itemLabel="expense"
+      />
     </div>
   );
 }

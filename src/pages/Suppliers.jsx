@@ -2,12 +2,15 @@ import { useEffect, useState } from 'react';
 import { Plus, Edit3, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { initDB, getDB } from '@/lib/db';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useBusiness } from '@/contexts/BusinessContext';
 
 export default function Suppliers() {
   const { activeBusiness } = useBusiness();
   const [suppliers, setSuppliers] = useState([]);
+  const { selectedIds, isSelected, toggleOne, toggleAll, clearSelection, isAllSelected, selectedCount } = useMultiSelect(suppliers);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -56,6 +59,19 @@ export default function Suppliers() {
     setEditId(null);
     setForm({ name: '', phone: '', email: '', address: '', createdAt: new Date().toISOString() });
     setConfirmDelete(false);
+  };
+
+  const deleteSelected = async () => {
+    if (selectedCount === 0) return;
+    const confirmed = window.confirm(`Delete ${selectedCount} suppliers?`);
+    if (!confirmed) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedIds) {
+      await currentDB.suppliers.delete(id);
+    }
+    setSuppliers((prev) => prev.filter((s) => !selectedIds.includes(s.id)));
+    clearSelection();
   };
 
   return (
@@ -143,6 +159,14 @@ export default function Suppliers() {
           <table className="w-full min-w-[700px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 text-slate-600">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllSelected}
+                    onChange={toggleAll}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3">Name</th>
                 <th className="px-4 py-3">Phone</th>
                 <th className="px-4 py-3">Email</th>
@@ -152,7 +176,15 @@ export default function Suppliers() {
             </thead>
             <tbody>
               {suppliers.map((supplier) => (
-                <tr key={supplier.id} className="border-b border-slate-200 hover:bg-slate-50">
+                <tr key={supplier.id} className={isSelected(supplier.id) ? 'bg-red-50' : 'border-b border-slate-200 hover:bg-slate-50'}>
+                  <td className="px-4 py-4">
+                    <input
+                      type="checkbox"
+                      checked={isSelected(supplier.id)}
+                      onChange={() => toggleOne(supplier.id)}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-4 font-semibold text-slate-900">{supplier.name}</td>
                   <td className="px-4 py-4 text-slate-700">{supplier.phone}</td>
                   <td className="px-4 py-4 text-slate-700">{supplier.email}</td>
@@ -182,6 +214,13 @@ export default function Suppliers() {
         cancelText="Cancel"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={deleteSupplier}
+      />
+
+      <BulkDeleteBar
+        selectedCount={selectedCount}
+        onDelete={deleteSelected}
+        onCancel={clearSelection}
+        itemLabel="supplier"
       />
     </div>
   );

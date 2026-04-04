@@ -1,27 +1,48 @@
-const { app, BrowserWindow, session } = require('electron');
+const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 // Make sure Electron has a writable userData path to avoid cache/quota lock issues
 app.setPath('userData', path.join(app.getPath('appData'), 'ERP Application'));
+app.commandLine.appendSwitch('disable-features', 'VizDisplayCompositor');
+
+let mainWindow;
 
 function createWindow() {
-  const win = new BrowserWindow({
-    width: 1200,
+  mainWindow = new BrowserWindow({
+    width: 1280,
     height: 800,
+    minWidth: 900,
+    minHeight: 600,
+    show: false,
+    title: 'Shop ERP',
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false,
+      nodeIntegration: false,
+      contextIsolation: true,
+      webSecurity: false,
+      partition: 'persist:shoperp',
     },
   });
 
-  // In production, load the local index.html file
-  // In development, load from the dev server
   if (process.env.NODE_ENV === 'development' || process.argv.includes('--dev')) {
-    win.loadURL('http://localhost:5173');
-    win.webContents.openDevTools();
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
   } else {
-    win.loadFile(path.join(__dirname, 'dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, 'dist/index.html'));
   }
+
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.maximize();
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: 'deny' };
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 app.whenReady().then(createWindow);

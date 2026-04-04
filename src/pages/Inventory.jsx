@@ -13,7 +13,7 @@ export default function Inventory() {
   const [inventory, setInventory] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [adjustOpen, setAdjustOpen] = useState(false);
-  const [adjustForm, setAdjustForm] = useState({ quantity: 0, note: '', type: 'add' });
+  const [adjustForm, setAdjustForm] = useState({ quantity: '', note: '', type: 'add' });
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
@@ -52,7 +52,7 @@ export default function Inventory() {
 
   const handleAdjust = (item) => {
     setSelectedItem(item);
-    setAdjustForm({ quantity: 0, note: '', type: 'add' });
+    setAdjustForm({ quantity: '', note: '', type: 'add' });
     setAdjustOpen(true);
   };
 
@@ -189,6 +189,7 @@ export default function Inventory() {
                     min={0}
                     value={adjustForm.quantity}
                     onChange={(event) => setAdjustForm((current) => ({ ...current, quantity: Number(event.target.value) }))}
+                    onFocus={e => e.target.select()}
                     className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 outline-none focus:border-brand-500"
                   />
                 </label>

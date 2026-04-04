@@ -5,6 +5,7 @@ import PageHeader from '@/components/PageHeader';
 import ImageUpload from '@/components/ImageUpload';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import PrintWrapper from '@/components/PrintWrapper';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { initDB, getDB } from '@/lib/db';
 import { DEFAULT_IMAGE, formatCurrency } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
@@ -24,12 +25,14 @@ export default function Products() {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [tempPreviewBarcode, setTempPreviewBarcode] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const [form, setForm] = useState({
     name: '',
     category: 'Biscuits',
     barcode: '',
-    price: 0,
-    costPrice: 0,
+    price: '',
+    costPrice: '',
     unit: 'pcs',
     expiryDate: '',
     image: DEFAULT_IMAGE,
@@ -69,8 +72,8 @@ export default function Products() {
       name: '',
       category: 'Biscuits',
       barcode: '',
-      price: 0,
-      costPrice: 0,
+      price: '',
+      costPrice: '',
       unit: 'pcs',
       expiryDate: '',
       image: DEFAULT_IMAGE,
@@ -145,6 +148,50 @@ export default function Products() {
 
   const productInventory = (productId) => inventory.find((item) => item.productId === productId);
 
+  // Toggle single product selection
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle select all
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+    } else {
+      setSelectedIds(filteredProducts?.map(p => p.id) ?? []);
+      setSelectAll(true);
+    }
+  };
+
+  // Delete selected products
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const confirm = window.confirm(
+      `Delete ${selectedIds.length} selected products? This cannot be undone.`
+    );
+    if (!confirm) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedIds) {
+      await currentDB.products.delete(id);
+      // Also delete inventory record
+      const inv = await currentDB.inventory.where('productId').equals(id).first();
+      if (inv?.id) await currentDB.inventory.delete(inv.id);
+    }
+    setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+    setSelectedIds([]);
+    setSelectAll(false);
+  };
+
+  // Update selectAll when filteredProducts or selectedIds change
+  useEffect(() => {
+    const allSelected = filteredProducts.length > 0 && filteredProducts.every(p => selectedIds.includes(p.id));
+    setSelectAll(allSelected);
+  }, [filteredProducts, selectedIds]);
+
   return (
     <div className="space-y-6">
       <PageHeader
@@ -182,20 +229,36 @@ export default function Products() {
           <table className="w-full min-w-[900px] border-collapse text-left text-sm">
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50 text-xs font-semibold uppercase tracking-wider text-slate-600">
-                  <th className="px-4 py-3">Product</th>
-                  <th className="px-4 py-3">Category</th>
-                  <th className="px-4 py-3">Barcode</th>
-                  <th className="px-4 py-3">Sale Price</th>
-                  <th className="px-4 py-3">Cost Price</th>
-                  <th className="px-4 py-3">Unit</th>
-                  <th className="px-4 py-3">Expiry</th>
-                  <th className="px-4 py-3">Stock</th>
-                  <th className="px-4 py-3">Actions</th>
-                </tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                </th>
+                <th className="px-4 py-3">Product</th>
+                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Barcode</th>
+                <th className="px-4 py-3">Sale Price</th>
+                <th className="px-4 py-3">Cost Price</th>
+                <th className="px-4 py-3">Unit</th>
+                <th className="px-4 py-3">Expiry</th>
+                <th className="px-4 py-3">Stock</th>
+                <th className="px-4 py-3">Actions</th>
+              </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredProducts.map((product) => (
-                <tr key={product.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={product.id} className={selectedIds.includes(product.id) ? 'bg-red-50' : 'hover:bg-slate-50 transition-colors'}>
+                  <td className="px-4 py-4">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(product.id)}
+                      onChange={() => toggleSelect(product.id)}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center gap-3">
                       <img src={product.image} alt={product.name} className="h-12 w-12 rounded-xl object-cover" />
@@ -364,6 +427,7 @@ export default function Products() {
                       step="0.01"
                       value={form.price}
                       onChange={(event) => setForm((current) => ({ ...current, price: Number(event.target.value) }))}
+                      onFocus={e => e.target.select()}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
                     />
@@ -375,6 +439,7 @@ export default function Products() {
                       step="0.01"
                       value={form.costPrice}
                       onChange={(event) => setForm((current) => ({ ...current, costPrice: Number(event.target.value) }))}
+                      onFocus={e => e.target.select()}
                       className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
                       required
                     />
@@ -539,6 +604,13 @@ export default function Products() {
         cancelText="Cancel"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={removeProduct}
+      />
+
+      <BulkDeleteBar
+        selectedCount={selectedIds.length}
+        onDelete={deleteSelected}
+        onCancel={() => { setSelectedIds([]); setSelectAll(false); }}
+        itemLabel="product"
       />
     </div>
   );

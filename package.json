@@ -9,8 +9,11 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "electron": "npm run build && npx electron .",
     "electron:dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "electron:build": "vite build && electron-builder --win nsis --x64",
+    "dist": "npm run build && electron-builder build --win --x64",
+    "dist:portable": "npm run build && electron-builder build --win --x64 --config.win.target=portable",
     "electron:start": "electron ."
   },
   "dependencies": {
@@ -38,8 +41,10 @@
     "wait-on": "^7.2.0"
   },
   "build": {
-    "appId": "com.electron.erp",
-    "productName": "ERP Application",
+    "appId": "com.shopErp.app",
+    "productName": "Shop ERP",
+    "asar": true,
+    "compression": "maximum",
     "directories": {
       "output": "release"
     },
@@ -47,13 +52,25 @@
       "dist/**/*",
       "main.cjs"
     ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "dist"
+      }
+    ],
     "win": {
-      "target": "nsis",
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
       "sign": null
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Shop ERP"
     }
   }
 }

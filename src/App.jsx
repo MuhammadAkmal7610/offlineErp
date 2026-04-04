@@ -14,6 +14,7 @@ import CustomerDetail from '@/pages/CustomerDetail';
 import Expenses from '@/pages/Expenses';
 import Reports from '@/pages/Reports';
 import Settings from '@/pages/Settings';
+import MonthlyRecords from '@/pages/MonthlyRecords';
 import './App.css';
 
 // Wrapper component to handle conditional routing based on business type
@@ -42,6 +43,7 @@ function BusinessRoutes() {
       )}
       <Route path="/expenses" element={<Expenses />} />
       <Route path="/reports" element={<Reports />} />
+      <Route path="/monthly-records" element={<MonthlyRecords />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -275,7 +275,7 @@ function CustomerModal({ customer, onClose, onSave }) {
     phone: customer?.phone || '',
     email: customer?.email || '',
     address: customer?.address || '',
-    openingBalance: 0,
+    openingBalance: '',
   });
 
   const handleSubmit = (e) => {
@@ -352,8 +352,9 @@ function CustomerModal({ customer, onClose, onSave }) {
                   min="0"
                   value={formData.openingBalance}
                   onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
+                  onFocus={e => e.target.select()}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                  placeholder="0"
+                  placeholder=""
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   If customer already owes money, enter amount here

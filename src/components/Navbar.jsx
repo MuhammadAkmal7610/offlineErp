@@ -17,6 +17,7 @@ import {
   User,
   ChevronDown,
   Check,
+  Calendar,
 } from 'lucide-react';
 
 // Get navigation links based on business type
@@ -34,6 +35,7 @@ function getLinks(activeBusiness) {
       : { path: '/customers', label: 'Customers', icon: User },
     { path: '/expenses', label: 'Expenses', icon: Wallet },
     { path: '/reports', label: 'Reports', icon: BarChart4 },
+    { path: '/monthly-records', label: 'Monthly Records', icon: Calendar },
     { path: '/settings', label: 'Settings', icon: Settings },
   ];
 }

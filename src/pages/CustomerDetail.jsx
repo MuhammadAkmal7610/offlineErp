@@ -334,8 +334,9 @@ function ChargeModal({ customerId, onClose, onSave }) {
               required
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={e => e.target.select()}
               className="mt-1 block w-full border rounded-md px-3 py-2"
-              placeholder="0.00"
+              placeholder=""
             />
           </div>
 
@@ -405,8 +406,9 @@ function PaymentModal({ customerId, onClose, onSave }) {
               required
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
+              onFocus={e => e.target.select()}
               className="mt-1 block w-full border rounded-md px-3 py-2"
-              placeholder="0.00"
+              placeholder=""
             />
           </div>
 

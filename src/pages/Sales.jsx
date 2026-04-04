@@ -3,9 +3,11 @@ import { Plus, Search, Trash2, Printer, CheckCircle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import PageHeader from '@/components/PageHeader';
 import ConfirmDialog from '@/components/ConfirmDialog';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { initDB, getDB } from '@/lib/db';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useSettings } from '@/hooks/useSettings';
+import { useMultiSelect } from '@/hooks/useMultiSelect';
 import { useBusiness } from '@/contexts/BusinessContext';
 
 const paymentMethods = ['Cash', 'Card', 'Other'];
@@ -32,6 +34,7 @@ export default function Sales() {
   const [salesList, setSalesList] = useState([]);
   const [fromDate, setFromDate] = useState(() => new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().substring(0, 10));
   const [toDate, setToDate] = useState(() => new Date().toISOString().substring(0, 10));
+  const { selectedIds: selectedSalesIds, isSelected: isSalesSelected, toggleOne: toggleSaleOne, toggleAll: toggleSalesAll, clearSelection: clearSalesSelection, isAllSelected: isAllSalesSelected, selectedCount: selectedSalesCount } = useMultiSelect(salesList);
   const [viewSale, setViewSale] = useState(null);
   const [returningSale, setReturningSale] = useState(null);
   const receiptRef = useRef(null);
@@ -340,6 +343,19 @@ export default function Sales() {
     alert('Sale returned and inventory restored successfully.');
   };
 
+  const deleteSelectedSales = async () => {
+    if (selectedSalesCount === 0) return;
+    const confirmed = window.confirm(`Delete ${selectedSalesCount} sales records?`);
+    if (!confirmed) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedSalesIds) {
+      await currentDB.sales.delete(id);
+    }
+    setSalesList((prev) => prev.filter((s) => !selectedSalesIds.includes(s.id)));
+    clearSalesSelection();
+  };
+
   const printReceipt = () => {
     const content = receiptRef.current;
     if (!content) return;
@@ -550,6 +566,7 @@ export default function Sales() {
                           min={1}
                           value={item.qty}
                           onChange={(event) => updateQty(item.productId, Number(event.target.value))}
+                          onFocus={e => e.target.select()}
                           className="w-20 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-center outline-none transition-colors focus:border-blue-500"
                         />
                       </td>
@@ -587,6 +604,7 @@ export default function Sales() {
                   min={0}
                   value={discount}
                   onChange={(event) => setDiscount(Number(event.target.value))}
+                  onFocus={e => e.target.select()}
                   className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-right outline-none transition-colors focus:border-blue-500"
                 />
               </div>
@@ -685,7 +703,8 @@ export default function Sales() {
                       type="number"
                       value={amountPaying}
                       onChange={e => setAmountPaying(Number(e.target.value))}
-                      placeholder="0"
+                      onFocus={e => e.target.select()}
+                      placeholder=""
                       className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
                       max={totalAmount}
                     />
@@ -767,6 +786,14 @@ export default function Sales() {
           <table className="w-full border-collapse text-left text-sm">
             <thead>
               <tr className="border-b bg-gray-50 text-gray-600">
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={isAllSalesSelected}
+                    onChange={toggleSalesAll}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Items</th>
                 <th className="px-4 py-3">Customer</th>
@@ -777,11 +804,19 @@ export default function Sales() {
             <tbody>
               {salesList?.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-gray-500">No sales found</td>
+                  <td colSpan={6} className="px-4 py-6 text-center text-gray-500">No sales found</td>
                 </tr>
               ) : (
                 salesList?.map((sale) => (
-                  <tr key={sale.id} className="border-b hover:bg-gray-50">
+                  <tr key={sale.id} className={isSalesSelected(sale.id) ? 'bg-red-50' : 'border-b hover:bg-gray-50'}>
+                    <td className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={isSalesSelected(sale.id)}
+                        onChange={() => toggleSaleOne(sale.id)}
+                        className="w-4 h-4 rounded cursor-pointer"
+                      />
+                    </td>
                     <td className="py-3 px-4 text-sm">
                       {new Date(sale.date).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
@@ -994,6 +1029,13 @@ export default function Sales() {
           setCart([]);
           setConfirmClear(false);
         }}
+      />
+
+      <BulkDeleteBar
+        selectedCount={selectedSalesCount}
+        onDelete={deleteSelectedSales}
+        onCancel={clearSalesSelection}
+        itemLabel="sale"
       />
     </div>
   );
