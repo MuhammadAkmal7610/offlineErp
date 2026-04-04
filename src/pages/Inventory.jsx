@@ -186,7 +186,7 @@ export default function Inventory() {
                   <span>Quantity</span>
                   <input
                     type="number"
-                    min={0}
+                    min={1}
                     value={adjustForm.quantity}
                     onChange={(event) => setAdjustForm((current) => ({ ...current, quantity: Number(event.target.value) }))}
                     onFocus={e => e.target.select()}

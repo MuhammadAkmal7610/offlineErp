@@ -99,7 +99,7 @@ export default function Expenses() {
                 <span>Amount</span>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   step="0.01"
                   value={form.amount}
                   onChange={(event) => setForm((current) => ({ ...current, amount: event.target.value }))}

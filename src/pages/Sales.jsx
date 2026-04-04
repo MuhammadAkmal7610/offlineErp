@@ -601,7 +601,7 @@ export default function Sales() {
                 <span className="text-slate-600">Discount</span>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   value={discount}
                   onChange={(event) => setDiscount(Number(event.target.value))}
                   onFocus={e => e.target.select()}

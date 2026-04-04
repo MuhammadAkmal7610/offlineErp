@@ -329,7 +329,7 @@ function ChargeModal({ customerId, onClose, onSave }) {
             <label className="block text-sm font-medium text-gray-700">Amount ({currency}) *</label>
             <input
               type="number"
-              min="0"
+              min="1"
               step="0.01"
               required
               value={amount}
@@ -401,7 +401,7 @@ function PaymentModal({ customerId, onClose, onSave }) {
             <label className="block text-sm font-medium text-gray-700">Amount ({currency}) *</label>
             <input
               type="number"
-              min="0"
+              min="1"
               step="0.01"
               required
               value={amount}

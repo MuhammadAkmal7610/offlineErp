@@ -201,7 +201,7 @@ export default function Purchases() {
                 <span>Cost Price</span>
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   step="0.01"
                   value={form.costPrice}
                   onChange={(event) => setForm((current) => ({ ...current, costPrice: Number(event.target.value) }))}

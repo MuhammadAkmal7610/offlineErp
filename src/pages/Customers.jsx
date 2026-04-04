@@ -349,7 +349,7 @@ function CustomerModal({ customer, onClose, onSave }) {
                 <label className="block text-sm font-medium text-slate-700 mb-1">Opening Balance (Rs)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   value={formData.openingBalance}
                   onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
                   onFocus={e => e.target.select()}

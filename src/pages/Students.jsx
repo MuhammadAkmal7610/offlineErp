@@ -403,7 +403,7 @@ function StudentModal({ student, onClose, onSave }) {
                 <label className="block text-sm font-medium text-gray-700">Opening Balance (Rs)</label>
                 <input
                   type="number"
-                  min="0"
+                  min="1"
                   value={formData.openingBalance}
                   onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
                   onFocus={e => e.target.select()}
