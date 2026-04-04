@@ -196,7 +196,8 @@ export default function Students() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <table className="w-full">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-max">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll</th>
@@ -251,6 +252,7 @@ export default function Students() {
             ))}
           </tbody>
         </table>
+        </div>
         {filteredStudents.length === 0 && (
           <div className="text-center py-8 text-gray-500">
             No students found
