@@ -19,17 +19,17 @@ export default function Sales() {
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
-  const [discount, setDiscount] = useState(0);
+  const [discount, setDiscount] = useState('');
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [showStudentDropdown, setShowStudentDropdown] = useState(false);
-  const [amountPaying, setAmountPaying] = useState(0);
+  const [amountPaying, setAmountPaying] = useState('');
   const [studentBalance, setStudentBalance] = useState(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [receiptSale, setReceiptSale] = useState(null);
   const [receiptStudent, setReceiptStudent] = useState(null);
-  const [receiptAmountPaid, setReceiptAmountPaid] = useState(0);
+  const [receiptAmountPaid, setReceiptAmountPaid] = useState('');
   const [confirmClear, setConfirmClear] = useState(false);
   const [salesList, setSalesList] = useState([]);
   const [fromDate, setFromDate] = useState(() => new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().substring(0, 10));
@@ -213,7 +213,7 @@ export default function Sales() {
   };
 
   const subtotal = cart.reduce((acc, item) => acc + item.subtotal, 0);
-  const totalAmount = Math.max(0, subtotal - discount);
+  const totalAmount = Math.max(0, subtotal - (Number(discount) || 0));
 
   const completeSale = async () => {
     if (cart.length === 0) return;
@@ -222,7 +222,7 @@ export default function Sales() {
     const sale = {
       items: cart,
       totalAmount,
-      discount,
+      discount: Number(discount) || 0,
       paymentMethod: selectedStudent ? 'student_account' : paymentMethod,
       studentId: selectedStudent?.id ?? null,
       date: saleDate,
@@ -272,10 +272,10 @@ export default function Sales() {
     setReceiptOpen(true);
     setCart([]);
     setSelectedStudent(null);
-    setAmountPaying(0);
+    setAmountPaying('');
     setStudentSearch('');
     setStudentBalance(null);
-    setDiscount(0);
+    setDiscount('');
     setPaymentMethod('Cash');
 
     // Refresh sales list
@@ -601,9 +601,9 @@ export default function Sales() {
                 <span className="text-slate-600">Discount</span>
                 <input
                   type="number"
-                  min={1}
+                  min={0}
                   value={discount}
-                  onChange={(event) => setDiscount(Number(event.target.value))}
+                  onChange={(event) => setDiscount(event.target.value)}
                   onFocus={e => e.target.select()}
                   className="w-24 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm text-right outline-none transition-colors focus:border-blue-500"
                 />
@@ -624,7 +624,7 @@ export default function Sales() {
                       onClick={() => {
                         setSelectedStudent(null);
                         setStudentSearch('');
-                        setAmountPaying(0);
+                        setAmountPaying('');
                         setStudentBalance(null);
                       }}
                       className="text-red-400 hover:text-red-600 text-lg leading-none ml-2"
@@ -702,9 +702,9 @@ export default function Sales() {
                     <input
                       type="number"
                       value={amountPaying}
-                      onChange={e => setAmountPaying(Number(e.target.value))}
+                      onChange={e => setAmountPaying(e.target.value)}
                       onFocus={e => e.target.select()}
-                      placeholder=""
+                      placeholder="Enter amount"
                       className="w-full border rounded-lg px-3 py-2 text-sm mt-1"
                       max={totalAmount}
                     />
