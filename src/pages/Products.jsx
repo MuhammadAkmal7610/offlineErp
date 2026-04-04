@@ -489,7 +489,7 @@ export default function Products() {
                     </div>
                     <div className="text-center">
                       <p className="text-sm font-bold text-slate-900">{form.name || 'Product Name'}</p>
-                      <p className="text-xs text-slate-500">{currency} {form.price?.toFixed(2) ?? '0.00'}</p>
+                      <p className="text-xs text-slate-500">{currency} {(typeof form.price === 'number' ? form.price : parseFloat(form.price) || 0).toFixed(2)}</p>
                       <p className="text-xs text-slate-400 font-mono mt-1">{form.barcode?.trim() || tempPreviewBarcode}</p>
                     </div>
                   </div>
@@ -561,7 +561,7 @@ export default function Products() {
                               <div class="label">
                                 ${svgData}
                                 <p class="name">${form.name || 'Product'}</p>
-                                <p class="price">${currency} ${form.price?.toFixed(2) ?? '0.00'}</p>
+                                <p class="price">${currency} ${(typeof form.price === 'number' ? form.price : parseFloat(form.price) || 0).toFixed(2)}</p>
                                 <p class="barcode">${form.barcode?.trim() || tempPreviewBarcode}</p>
                               </div>
                               <script>window.onload = () => { window.print(); window.close(); }</script>
