@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Plus, Filter } from 'lucide-react';
+import { Plus, Filter, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import PrintWrapper from '@/components/PrintWrapper';
 import ConfirmDialog from '@/components/ConfirmDialog';
@@ -15,6 +15,8 @@ export default function Inventory() {
   const [adjustOpen, setAdjustOpen] = useState(false);
   const [adjustForm, setAdjustForm] = useState({ quantity: '', note: '', type: 'add' });
   const [filter, setFilter] = useState('all');
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleteItemId, setDeleteItemId] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -75,6 +77,16 @@ export default function Inventory() {
     setAdjustOpen(false);
   };
 
+  // Delete single inventory item
+  const deleteInventoryItem = async () => {
+    if (!deleteItemId) return;
+    const currentDB = getDB(activeBusiness);
+    await currentDB.inventory.delete(deleteItemId);
+    setInventory((current) => current.filter((item) => item.id !== deleteItemId));
+    setConfirmDelete(false);
+    setDeleteItemId(null);
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Inventory" description="Track stock levels, adjust inventory, and print reports" />
@@ -113,13 +125,13 @@ export default function Inventory() {
               </tr>
             </thead>
             <tbody>
-              {inventoryView.map((item) => {
-                const status = item.quantity <= 0 ? 'Out' : item.quantity <= item.lowStockThreshold ? 'Low' : 'OK';
-                const statusClass = status === 'Out' ? 'bg-red-100 text-red-700' : status === 'Low' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+               {inventoryView.map((item) => {
+                 const status = item.quantity <= 0 ? 'Out' : item.quantity <= item.lowStockThreshold ? 'Low' : 'OK';
+                 const statusClass = status === 'Out' ? 'bg-red-100 text-red-700' : status === 'Low' ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
 
-                return (
-                  <tr key={item.id} className="border-b border-slate-200 hover:bg-slate-50">
-                    <td className="px-4 py-4 font-semibold text-slate-900">{item.productName}</td>
+                 return (
+                   <tr key={item.id} className="border-b border-slate-200 hover:bg-slate-50">
+                     <td className="px-4 py-4 font-semibold text-slate-900">{item.productName}</td>
                     <td className="px-4 py-4 text-slate-700">{item.category}</td>
                     <td className="px-4 py-4 text-slate-700">{item.quantity}</td>
                     <td className="px-4 py-4 text-slate-700">{item.unit}</td>
@@ -129,14 +141,27 @@ export default function Inventory() {
                       <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${statusClass}`}>{status}</span>
                     </td>
                     <td className="px-4 py-4">
-                      <button
-                        type="button"
-                        onClick={() => handleAdjust(item)}
-                        className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
-                      >
-                        <Plus className="h-4 w-4" />
-                        Adjust
-                      </button>
+                       <div className="flex items-center gap-2">
+                         <button
+                           type="button"
+                           onClick={() => handleAdjust(item)}
+                           className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+                         >
+                           <Plus className="h-4 w-4" />
+                           Adjust
+                         </button>
+                         <button
+                           type="button"
+                           onClick={() => {
+                             setDeleteItemId(item.id);
+                             setConfirmDelete(true);
+                           }}
+                           className="inline-flex items-center gap-1 rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors"
+                           title="Delete Inventory Record"
+                         >
+                           <Trash2 className="h-4 w-4" />
+                         </button>
+                       </div>
                     </td>
                   </tr>
                 );
@@ -226,6 +251,17 @@ export default function Inventory() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="Delete inventory record"
+        description="This will remove the inventory record. This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        onCancel={() => { setConfirmDelete(false); setDeleteItemId(null); }}
+        onConfirm={deleteInventoryItem}
+      />
+
     </div>
   );
 }

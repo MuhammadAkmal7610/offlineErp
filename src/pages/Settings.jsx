@@ -3,7 +3,7 @@ import { RefreshCw, Download, Upload, Trash2 } from 'lucide-react';
 import PageHeader from '@/components/PageHeader';
 import { useSettings } from '@/hooks/useSettings';
 import { useBusiness } from '@/contexts/BusinessContext';
-import { initDB, getDB, resetDatabase } from '@/lib/db';
+import { initDB, initDBWithSeed, getDB, resetDatabase } from '@/lib/db';
 
 export default function Settings() {
   const settings = useSettings();
@@ -54,6 +54,8 @@ export default function Settings() {
     setResetting(true);
     try {
       await resetDatabase(activeBusiness);
+      // Re-initialize with seed to ensure data is available
+      await initDBWithSeed(activeBusiness);
       setResetDone(true);
       setTimeout(() => setResetDone(false), 5000);
     } catch (error) {

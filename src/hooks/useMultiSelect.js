@@ -1,7 +1,14 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export const useMultiSelect = (items = []) => {
   const [selectedIds, setSelectedIds] = useState([])
+
+  // Reset selection when items change (e.g., after navigation or data refresh)
+  useEffect(() => {
+    const itemIds = new Set(items.map(i => i.id))
+    // Remove any selected IDs that no longer exist in items
+    setSelectedIds(prev => prev.filter(id => itemIds.has(id)))
+  }, [items])
 
   const isSelected = (id) => selectedIds.includes(id)
 

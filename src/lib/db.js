@@ -96,8 +96,16 @@ async function safeOpenDB(targetDB) {
   }
 }
 
-// Initialize a specific database
+// Initialize a specific database (does NOT auto-seed - seeding is opt-in)
 export async function initDB(business = 'general') {
+  const targetDB = getDB(business);
+  await safeOpenDB(targetDB);
+  await deduplicateProducts(targetDB);
+  return targetDB;
+}
+
+// Initialize database with seeding (for first-time setup or explicit reset)
+export async function initDBWithSeed(business = 'general') {
   const targetDB = getDB(business);
   await safeOpenDB(targetDB);
   await deduplicateProducts(targetDB);

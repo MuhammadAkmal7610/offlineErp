@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, BookOpen, Edit, Trash2 } from 'lucide-react';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import StatsCard from '@/components/StatsCard';
@@ -19,6 +20,8 @@ export default function Students() {
   const [editStudent, setEditStudent] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
@@ -99,7 +102,50 @@ export default function Students() {
     setSelectedStudent(null);
   };
 
+  // Toggle single student selection
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle select all
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+    } else {
+      setSelectedIds(filteredStudents?.map(s => s.id) ?? []);
+      setSelectAll(true);
+    }
+  };
+
+  // Delete selected students
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const confirm = window.confirm(
+      `Delete ${selectedIds.length} selected students? This cannot be undone.`
+    );
+    if (!confirm) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedIds) {
+      await currentDB.students.delete(id);
+      await currentDB.studentLedger.where('studentId').equals(id).delete();
+    }
+    setStudents(prev => prev.filter(s => !selectedIds.includes(s.id)));
+    setSelectedIds([]);
+    setSelectAll(false);
+  };
+
+  // Update selectAll when filteredStudents or selectedIds change
+  useEffect(() => {
+    const allSelected = filteredStudents.length > 0 && filteredStudents.every(s => selectedIds.includes(s.id));
+    setSelectAll(allSelected);
+  }, [filteredStudents, selectedIds]);
+
   const handleSaveStudent = async (formData, isEdit = false) => {
+    await initDB(activeBusiness);
     const currentDB = getDB(activeBusiness);
     
     if (isEdit && formData.id) {
@@ -196,10 +242,18 @@ export default function Students() {
       </div>
 
       <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[58vh]">
         <table className="w-full min-w-max">
           <thead className="bg-gray-50">
             <tr>
+              <th className="w-10 px-4 py-3">
+                <input
+                  type="checkbox"
+                  checked={selectAll}
+                  onChange={toggleSelectAll}
+                  className="w-4 h-4 rounded cursor-pointer"
+                />
+              </th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Roll</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
               <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Father Name</th>
@@ -211,7 +265,15 @@ export default function Students() {
           </thead>
           <tbody className="divide-y divide-gray-200">
             {filteredStudents.map((student) => (
-              <tr key={student.id} className="hover:bg-gray-50">
+              <tr key={student.id} className={selectedIds.includes(student.id) ? 'bg-red-50 hover:bg-red-100' : 'hover:bg-gray-50'}>
+                <td className="px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedIds.includes(student.id)}
+                    onChange={() => toggleSelect(student.id)}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                </td>
                 <td className="px-4 py-3 text-sm font-medium text-gray-900">{student.rollNumber}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{student.name}</td>
                 <td className="px-4 py-3 text-sm text-gray-900">{student.fatherName}</td>
@@ -236,16 +298,18 @@ export default function Students() {
                     >
                       <Edit className="h-4 w-4" />
                     </button>
-                    <button
-                      onClick={() => {
-                        setSelectedStudent(student);
-                        setConfirmDelete(true);
-                      }}
-                      className="text-red-600 hover:text-red-800"
-                      title="Delete Student"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {!selectedIds.includes(student.id) ? (
+                      <button
+                        onClick={() => {
+                          setSelectedStudent(student);
+                          setConfirmDelete(true);
+                        }}
+                        className="text-red-600 hover:text-red-800"
+                        title="Delete Student"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : null}
                   </div>
                 </td>
               </tr>
@@ -283,6 +347,13 @@ export default function Students() {
         cancelText="Cancel"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={handleDeleteStudent}
+      />
+
+      <BulkDeleteBar
+        selectedCount={selectedIds.length}
+        onDelete={deleteSelected}
+        onCancel={() => { setSelectedIds([]); setSelectAll(false); }}
+        itemLabel="student"
       />
     </div>
   );

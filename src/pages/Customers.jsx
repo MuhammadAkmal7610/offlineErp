@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus, Search, BookOpen, Edit, Trash2 } from 'lucide-react';
+import BulkDeleteBar from '@/components/BulkDeleteBar';
 import { useNavigate } from 'react-router-dom';
 import PageHeader from '@/components/PageHeader';
 import StatsCard from '@/components/StatsCard';
@@ -18,6 +19,8 @@ export default function Customers() {
   const [editCustomer, setEditCustomer] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
@@ -88,6 +91,48 @@ export default function Customers() {
     setConfirmDelete(false);
     setSelectedCustomer(null);
   };
+
+  // Toggle single customer selection
+  const toggleSelect = (id) => {
+    setSelectedIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle select all
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedIds([]);
+      setSelectAll(false);
+    } else {
+      setSelectedIds(filteredCustomers?.map(c => c.id) ?? []);
+      setSelectAll(true);
+    }
+  };
+
+  // Delete selected customers
+  const deleteSelected = async () => {
+    if (selectedIds.length === 0) return;
+    const confirm = window.confirm(
+      `Delete ${selectedIds.length} selected customers? This cannot be undone.`
+    );
+    if (!confirm) return;
+
+    const currentDB = getDB(activeBusiness);
+    for (const id of selectedIds) {
+      await currentDB.customers.delete(id);
+      await currentDB.customerLedger.where('customerId').equals(id).delete();
+    }
+    setCustomers(prev => prev.filter(c => !selectedIds.includes(c.id)));
+    setSelectedIds([]);
+    setSelectAll(false);
+  };
+
+  // Update selectAll when filteredCustomers or selectedIds change
+  useEffect(() => {
+    const allSelected = filteredCustomers.length > 0 && filteredCustomers.every(c => selectedIds.includes(c.id));
+    setSelectAll(allSelected);
+  }, [filteredCustomers, selectedIds]);
 
   const handleSaveCustomer = async (formData, isEdit = false) => {
     const currentDB = getDB(activeBusiness);
@@ -179,6 +224,14 @@ export default function Customers() {
           <table className="w-full">
             <thead className="bg-slate-50 border-b border-slate-200">
               <tr>
+                <th className="w-10 px-4 py-3">
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 rounded cursor-pointer"
+                  />
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-600">Email</th>
@@ -188,7 +241,15 @@ export default function Customers() {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredCustomers.map((customer) => (
-                <tr key={customer.id} className="hover:bg-slate-50 transition-colors">
+                <tr key={customer.id} className={selectedIds.includes(customer.id) ? 'bg-red-50 hover:bg-red-100 transition-colors' : 'hover:bg-slate-50 transition-colors'}>
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.includes(customer.id)}
+                      onChange={() => toggleSelect(customer.id)}
+                      className="w-4 h-4 rounded cursor-pointer"
+                    />
+                  </td>
                   <td className="px-4 py-3">
                     <span className="text-sm font-semibold text-slate-900">{customer.name}</span>
                   </td>
@@ -213,16 +274,18 @@ export default function Customers() {
                       >
                         <Edit className="h-4 w-4" />
                       </button>
-                      <button
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setConfirmDelete(true);
-                        }}
-                        className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors"
-                        title="Delete Customer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {!selectedIds.includes(customer.id) ? (
+                        <button
+                          onClick={() => {
+                            setSelectedCustomer(customer);
+                            setConfirmDelete(true);
+                          }}
+                          className="rounded-lg border border-red-200 bg-red-50 p-2 text-red-600 hover:bg-red-100 transition-colors"
+                          title="Delete Customer"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      ) : null}
                     </div>
                   </td>
                 </tr>
@@ -263,6 +326,13 @@ export default function Customers() {
         cancelText="Cancel"
         onCancel={() => setConfirmDelete(false)}
         onConfirm={handleDeleteCustomer}
+      />
+
+      <BulkDeleteBar
+        selectedCount={selectedIds.length}
+        onDelete={deleteSelected}
+        onCancel={() => { setSelectedIds([]); setSelectAll(false); }}
+        itemLabel="customer"
       />
     </div>
   );

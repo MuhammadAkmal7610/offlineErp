@@ -17,6 +17,7 @@ export default function Sales() {
   const [products, setProducts] = useState([]);
   const [inventory, setInventory] = useState([]);
   const [students, setStudents] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [cart, setCart] = useState([]);
   const [discount, setDiscount] = useState('');
@@ -48,21 +49,23 @@ export default function Sales() {
     const load = async () => {
       await initDB(activeBusiness);
       const currentDB = getDB(activeBusiness);
-      const [productData, inventoryData, studentData, salesData] = await Promise.all([
+      const [productData, inventoryData, studentData, customerData, salesData] = await Promise.all([
         currentDB.products.toArray(),
         currentDB.inventory.toArray(),
         currentDB.students.toArray(),
+        currentDB.customers.toArray(),
         currentDB.sales.toArray()
       ]);
       setProducts(productData);
       setInventory(inventoryData);
       setStudents(studentData);
-      loadSalesList(salesData, studentData);
+      setCustomers(customerData);
+      loadSalesList(salesData, studentData, customerData);
     };
     load();
   }, [activeBusiness]);
 
-  const loadSalesList = async (salesData, studentData) => {
+  const loadSalesList = async (salesData, studentData, customerData = []) => {
     const from = new Date(`${fromDate}T00:00:00`);
     const to = new Date(`${toDate}T23:59:59.999`);
     const filtered = salesData
@@ -71,10 +74,21 @@ export default function Sales() {
         return d >= from && d <= to;
       })
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .map((sale) => ({
-        ...sale,
-        studentName: studentData.find((s) => s.id === sale.studentId)?.name ?? 'Walk-in',
-      }));
+      .map((sale) => {
+        // For general business, use students; for others, use customers
+        let customerName = 'Walk-in';
+        if (sale.studentId) {
+          if (activeBusiness === 'general') {
+            customerName = studentData.find((s) => s.id === sale.studentId)?.name ?? 'Walk-in';
+          } else {
+            customerName = customerData.find((c) => c.id === sale.studentId)?.name ?? 'Walk-in';
+          }
+        }
+        return {
+          ...sale,
+          studentName: customerName,
+        };
+      });
     setSalesList(filtered);
   };
 
@@ -93,6 +107,16 @@ export default function Sales() {
     ).slice(0, 5);
   }, [studentSearch, students]);
 
+  const customerResults = useMemo(() => {
+    if (!studentSearch || studentSearch.length < 1) return [];
+    const q = studentSearch.toLowerCase();
+    return customers.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.phone.toLowerCase().includes(q) ||
+      (c.email && c.email.toLowerCase().includes(q))
+    ).slice(0, 5);
+  }, [studentSearch, customers]);
+
   useEffect(() => {
     const loadBalance = async () => {
       if (!selectedStudent?.id) {
@@ -100,8 +124,10 @@ export default function Sales() {
         return;
       }
       const currentDB = getDB(activeBusiness);
-      const ledger = await currentDB.studentLedger
-        .where('studentId').equals(selectedStudent.id).toArray();
+      // For general business use studentLedger, for others use customerLedger
+      const ledgerTable = activeBusiness === 'general' ? currentDB.studentLedger : currentDB.customerLedger;
+      const idField = activeBusiness === 'general' ? 'studentId' : 'customerId';
+      const ledger = await ledgerTable.where(idField).equals(selectedStudent.id).toArray();
       const charged = ledger
         .filter(e => e.type !== 'payment')
         .reduce((sum, e) => sum + e.amount, 0);
@@ -244,22 +270,43 @@ export default function Sales() {
     );
 
     if (selectedStudent) {
-      await currentDB.studentLedger.add({
-        studentId: selectedStudent.id,
-        type: 'charge',
-        amount: totalAmount,
-        description: `Purchase - Sale #${id}`,
-        date: saleDate,
-      });
-
-      if (amountPaying > 0) {
+      // Use correct ledger table based on business type
+      if (activeBusiness === 'general') {
         await currentDB.studentLedger.add({
           studentId: selectedStudent.id,
-          type: 'payment',
-          amount: amountPaying,
-          description: `Payment at sale #${id}`,
+          type: 'charge',
+          amount: totalAmount,
+          description: `Purchase - Sale #${id}`,
           date: saleDate,
         });
+
+        if (amountPaying > 0) {
+          await currentDB.studentLedger.add({
+            studentId: selectedStudent.id,
+            type: 'payment',
+            amount: amountPaying,
+            description: `Payment at sale #${id}`,
+            date: saleDate,
+          });
+        }
+      } else {
+        await currentDB.customerLedger.add({
+          customerId: selectedStudent.id,
+          type: 'charge',
+          amount: totalAmount,
+          description: `Purchase - Sale #${id}`,
+          date: saleDate,
+        });
+
+        if (amountPaying > 0) {
+          await currentDB.customerLedger.add({
+            customerId: selectedStudent.id,
+            type: 'payment',
+            amount: amountPaying,
+            description: `Payment at sale #${id}`,
+            date: saleDate,
+          });
+        }
       }
     }
 
@@ -320,13 +367,24 @@ export default function Sales() {
     );
 
     if (sale.studentId) {
-      await currentDB.studentLedger.add({
-        studentId: sale.studentId,
-        type: 'payment',
-        amount: -sale.totalAmount,
-        description: `Return refund for sale #${sale.id}`,
-        date: new Date().toISOString(),
-      });
+      // Use correct ledger table based on business type
+      if (activeBusiness === 'general') {
+        await currentDB.studentLedger.add({
+          studentId: sale.studentId,
+          type: 'payment',
+          amount: -sale.totalAmount,
+          description: `Return refund for sale #${sale.id}`,
+          date: new Date().toISOString(),
+        });
+      } else {
+        await currentDB.customerLedger.add({
+          customerId: sale.studentId,
+          type: 'payment',
+          amount: -sale.totalAmount,
+          description: `Return refund for sale #${sale.id}`,
+          date: new Date().toISOString(),
+        });
+      }
     }
 
     await currentDB.sales.update(sale.id, { returned: true });
@@ -609,16 +667,24 @@ export default function Sales() {
                 />
               </div>
 
-              {/* Student Search */}
+              {/* Student/Customer Search */}
               <div className="mb-3">
-                <label className="text-sm font-medium text-gray-700">Student (optional)</label>
+                <label className="text-sm font-medium text-gray-700">
+                  {activeBusiness === 'general' ? 'Student (optional)' : 'Customer (optional)'}
+                </label>
                 {selectedStudent ? (
                   <div className="mt-1 flex items-center justify-between bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
                     <div>
                       <p className="text-sm font-medium">{selectedStudent.name}</p>
-                      <p className="text-xs text-gray-500">
-                        Roll: {selectedStudent.rollNumber} | Father: {selectedStudent.fatherName}
-                      </p>
+                      {activeBusiness === 'general' ? (
+                        <p className="text-xs text-gray-500">
+                          Roll: {selectedStudent.rollNumber} | Father: {selectedStudent.fatherName}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-gray-500">
+                          Phone: {selectedStudent.phone} {selectedStudent.email ? `| ${selectedStudent.email}` : ''}
+                        </p>
+                      )}
                     </div>
                     <button
                       onClick={() => {
@@ -643,10 +709,10 @@ export default function Sales() {
                       }}
                       onFocus={() => setShowStudentDropdown(true)}
                       onBlur={() => setTimeout(() => setShowStudentDropdown(false), 200)}
-                      placeholder="Search by name or roll number..."
+                      placeholder={activeBusiness === 'general' ? 'Search by name or roll number...' : 'Search by name or phone...'}
                       className="w-full border rounded-lg px-3 py-2 text-sm"
                     />
-                    {showStudentDropdown && studentResults && studentResults.length > 0 && (
+                    {showStudentDropdown && activeBusiness === 'general' && studentResults && studentResults.length > 0 && (
                       <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
                         {studentResults.map(s => (
                           <div
@@ -666,6 +732,26 @@ export default function Sales() {
                         ))}
                       </div>
                     )}
+                    {showStudentDropdown && activeBusiness !== 'general' && customerResults && customerResults.length > 0 && (
+                      <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg mt-1 max-h-48 overflow-y-auto">
+                        {customerResults.map(c => (
+                          <div
+                            key={c.id}
+                            onMouseDown={() => {
+                              setSelectedStudent(c);
+                              setStudentSearch('');
+                              setShowStudentDropdown(false);
+                            }}
+                            className="px-3 py-2 hover:bg-blue-50 cursor-pointer border-b last:border-0"
+                          >
+                            <p className="text-sm font-medium">{c.name}</p>
+                            <p className="text-xs text-gray-400">
+                              Phone: {c.phone} {c.email ? `| ${c.email}` : ''}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -673,7 +759,7 @@ export default function Sales() {
               {selectedStudent && (
                 <div className="bg-gray-50 rounded-lg p-3 mb-3 border">
                   <p className="text-xs font-semibold text-gray-500 uppercase mb-2">
-                    Student Account
+                    {activeBusiness === 'general' ? 'Student Account' : 'Customer Account'}
                   </p>
                   <div className="space-y-1">
                     <div className="flex justify-between text-sm">
@@ -959,12 +1045,25 @@ export default function Sales() {
               </div>
               {receiptStudent && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm font-semibold text-blue-800">
-                    Student: {receiptStudent.name} (Roll: {receiptStudent.rollNumber})
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Father: {receiptStudent.fatherName} | Class: {receiptStudent.class}
-                  </p>
+                  {activeBusiness === 'general' ? (
+                    <>
+                      <p className="text-sm font-semibold text-blue-800">
+                        Student: {receiptStudent.name} (Roll: {receiptStudent.rollNumber})
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        Father: {receiptStudent.fatherName} | Class: {receiptStudent.class}
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-blue-800">
+                        Customer: {receiptStudent.name}
+                      </p>
+                      <p className="text-xs text-blue-600">
+                        Phone: {receiptStudent.phone} {receiptStudent.email ? `| Email: ${receiptStudent.email}` : ''}
+                      </p>
+                    </>
+                  )}
                 </div>
               )}
               <div className="space-y-2">
