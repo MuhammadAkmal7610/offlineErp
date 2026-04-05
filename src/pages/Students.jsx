@@ -22,6 +22,7 @@ export default function Students() {
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
@@ -128,14 +129,25 @@ export default function Students() {
     );
     if (!confirm) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedIds) {
-      await currentDB.students.delete(id);
-      await currentDB.studentLedger.where('studentId').equals(id).delete();
+    setIsDeleting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      
+      // Use bulk delete for better performance
+      await currentDB.students.bulkDelete(selectedIds);
+      
+      // Delete ledger entries in parallel batches
+      const ledgerDeletePromises = selectedIds.map(id => 
+        currentDB.studentLedger.where('studentId').equals(id).delete()
+      );
+      await Promise.all(ledgerDeletePromises);
+      
+      setStudents(prev => prev.filter(s => !selectedIds.includes(s.id)));
+      setSelectedIds([]);
+      setSelectAll(false);
+    } finally {
+      setIsDeleting(false);
     }
-    setStudents(prev => prev.filter(s => !selectedIds.includes(s.id)));
-    setSelectedIds([]);
-    setSelectAll(false);
   };
 
   // Update selectAll when filteredStudents or selectedIds change
@@ -354,6 +366,7 @@ export default function Students() {
         onDelete={deleteSelected}
         onCancel={() => { setSelectedIds([]); setSelectAll(false); }}
         itemLabel="student"
+        isDeleting={isDeleting}
       />
     </div>
   );

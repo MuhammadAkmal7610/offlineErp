@@ -18,6 +18,17 @@ export default function Inventory() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleteItemId, setDeleteItemId] = useState(null);
 
+  // Reset modal state when business changes (prevents stale state in Electron)
+  useEffect(() => {
+    return () => {
+      setAdjustOpen(false);
+      setConfirmDelete(false);
+      setSelectedItem(null);
+      setDeleteItemId(null);
+      setAdjustForm({ quantity: '', note: '', type: 'add' });
+    };
+  }, [activeBusiness]);
+
   useEffect(() => {
     const load = async () => {
       await initDB(activeBusiness);
@@ -80,11 +91,24 @@ export default function Inventory() {
   // Delete single inventory item
   const deleteInventoryItem = async () => {
     if (!deleteItemId) return;
+    const idToDelete = deleteItemId;
     const currentDB = getDB(activeBusiness);
-    await currentDB.inventory.delete(deleteItemId);
-    setInventory((current) => current.filter((item) => item.id !== deleteItemId));
+    try {
+      await currentDB.inventory.delete(idToDelete);
+      setInventory((current) => current.filter((item) => item.id !== idToDelete));
+    } catch (error) {
+      console.error('Error deleting inventory item:', error);
+      return;
+    }
+    // Reset selectedItem if it matches the deleted item to prevent stale state
+    if (selectedItem && selectedItem.id === idToDelete) {
+      setSelectedItem(null);
+    }
+    // Reset state in order to prevent UI issues
     setConfirmDelete(false);
     setDeleteItemId(null);
+    // Reset adjust form to prevent stale data
+    setAdjustForm({ quantity: '', note: '', type: 'add' });
   };
 
   return (

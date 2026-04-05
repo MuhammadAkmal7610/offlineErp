@@ -11,6 +11,7 @@ export default function Suppliers() {
   const { activeBusiness } = useBusiness();
   const [suppliers, setSuppliers] = useState([]);
   const { selectedIds, isSelected, toggleOne, toggleAll, clearSelection, isAllSelected, selectedCount } = useMultiSelect(suppliers);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState({
     name: '',
     phone: '',
@@ -66,12 +67,16 @@ export default function Suppliers() {
     const confirmed = window.confirm(`Delete ${selectedCount} suppliers?`);
     if (!confirmed) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedIds) {
-      await currentDB.suppliers.delete(id);
+    setIsDeleting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      // Use bulk delete for better performance
+      await currentDB.suppliers.bulkDelete(selectedIds);
+      setSuppliers((prev) => prev.filter((s) => !selectedIds.includes(s.id)));
+      clearSelection();
+    } finally {
+      setIsDeleting(false);
     }
-    setSuppliers((prev) => prev.filter((s) => !selectedIds.includes(s.id)));
-    clearSelection();
   };
 
   return (
@@ -221,6 +226,7 @@ export default function Suppliers() {
         onDelete={deleteSelected}
         onCancel={clearSelection}
         itemLabel="supplier"
+        isDeleting={isDeleting}
       />
     </div>
   );

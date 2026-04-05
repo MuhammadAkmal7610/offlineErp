@@ -27,6 +27,7 @@ export default function Products() {
   const [tempPreviewBarcode, setTempPreviewBarcode] = useState('');
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState({
     name: '',
     category: 'Biscuits',
@@ -39,6 +40,17 @@ export default function Products() {
     description: '',
     createdAt: new Date().toISOString(),
   });
+
+  // Reset modal state when business changes (prevents stale state in Electron)
+  useEffect(() => {
+    return () => {
+      setOpenForm(false);
+      setConfirmDelete(false);
+      setSelectedProduct(null);
+      setSelectedIds([]);
+      setSelectAll(false);
+    };
+  }, [activeBusiness]);
 
   useEffect(() => {
     const load = async () => {
@@ -134,12 +146,36 @@ export default function Products() {
 
   const removeProduct = async () => {
     if (!selectedProduct?.id) return;
+    const idToDelete = selectedProduct.id;
     const currentDB = getDB(activeBusiness);
-    await currentDB.products.delete(selectedProduct.id);
-    await currentDB.inventory.where('productId').equals(selectedProduct.id).delete();
-    setProducts((current) => current.filter((item) => item.id !== selectedProduct.id));
+    try {
+      await currentDB.products.delete(idToDelete);
+      await currentDB.inventory.where('productId').equals(idToDelete).delete();
+      setProducts((current) => current.filter((item) => item.id !== idToDelete));
+    } catch (error) {
+      console.error('Error deleting product:', error);
+      // Don't close modals if there was an error
+      return;
+    }
+    // Reset all state in a specific order to prevent UI issues
+    // First close the confirm dialog
     setConfirmDelete(false);
+    // Then close the form modal
     setOpenForm(false);
+    // Finally reset the product-specific state
+    setSelectedProduct(null);
+    setForm({
+      name: '',
+      category: 'Biscuits',
+      barcode: '',
+      price: '',
+      costPrice: '',
+      unit: 'pcs',
+      expiryDate: '',
+      image: DEFAULT_IMAGE,
+      description: '',
+      createdAt: new Date().toISOString(),
+    });
   };
 
   const updateBarcode = (value) => {
@@ -174,16 +210,27 @@ export default function Products() {
     );
     if (!confirm) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedIds) {
-      await currentDB.products.delete(id);
-      // Also delete inventory record
-      const inv = await currentDB.inventory.where('productId').equals(id).first();
-      if (inv?.id) await currentDB.inventory.delete(inv.id);
+    setIsDeleting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      
+      // Use bulk delete for better performance
+      await currentDB.products.bulkDelete(selectedIds);
+      
+      // Delete inventory records in parallel
+      const inventoryDeletePromises = selectedIds.map(async (id) => {
+        const inv = await currentDB.inventory.where('productId').equals(id).first();
+        if (inv?.id) return currentDB.inventory.delete(inv.id);
+        return Promise.resolve();
+      });
+      await Promise.all(inventoryDeletePromises);
+      
+      setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
+      setSelectedIds([]);
+      setSelectAll(false);
+    } finally {
+      setIsDeleting(false);
     }
-    setProducts(prev => prev.filter(p => !selectedIds.includes(p.id)));
-    setSelectedIds([]);
-    setSelectAll(false);
   };
 
   // Update selectAll when filteredProducts or selectedIds change
@@ -602,7 +649,11 @@ export default function Products() {
         description="This will remove the product and its inventory record. This action cannot be undone."
         confirmText="Delete"
         cancelText="Cancel"
-        onCancel={() => setConfirmDelete(false)}
+        onCancel={() => {
+          setConfirmDelete(false);
+          setOpenForm(false);
+          setSelectedProduct(null);
+        }}
         onConfirm={removeProduct}
       />
 
@@ -611,6 +662,7 @@ export default function Products() {
         onDelete={deleteSelected}
         onCancel={() => { setSelectedIds([]); setSelectAll(false); }}
         itemLabel="product"
+        isDeleting={isDeleting}
       />
     </div>
   );

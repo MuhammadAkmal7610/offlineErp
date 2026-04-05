@@ -42,6 +42,7 @@ export default function Sales() {
   const barcodeRef = useRef(null);
   const [barcodeValue, setBarcodeValue] = useState('');
   const [scanFeedback, setScanFeedback] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
@@ -406,12 +407,16 @@ export default function Sales() {
     const confirmed = window.confirm(`Delete ${selectedSalesCount} sales records?`);
     if (!confirmed) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedSalesIds) {
-      await currentDB.sales.delete(id);
+    setIsDeleting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      // Use bulk delete for better performance
+      await currentDB.sales.bulkDelete(selectedSalesIds);
+      setSalesList((prev) => prev.filter((s) => !selectedSalesIds.includes(s.id)));
+      clearSalesSelection();
+    } finally {
+      setIsDeleting(false);
     }
-    setSalesList((prev) => prev.filter((s) => !selectedSalesIds.includes(s.id)));
-    clearSalesSelection();
   };
 
   const printReceipt = () => {
@@ -1135,6 +1140,7 @@ export default function Sales() {
         onDelete={deleteSelectedSales}
         onCancel={clearSalesSelection}
         itemLabel="sale"
+        isDeleting={isDeleting}
       />
     </div>
   );

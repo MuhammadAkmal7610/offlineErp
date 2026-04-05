@@ -22,6 +22,7 @@ export default function Customers() {
   const [selectedIds, setSelectedIds] = useState([]);
   const [selectAll, setSelectAll] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletionProgress, setDeletionProgress] = useState(0);
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
 
@@ -111,7 +112,7 @@ export default function Customers() {
     }
   };
 
-  // Delete selected customers
+  // Delete selected customers - PERMANENT ELECTRON FIX
   const deleteSelected = async () => {
     if (selectedIds.length === 0) return;
     const confirm = window.confirm(
@@ -121,6 +122,7 @@ export default function Customers() {
 
     // Show loading immediately
     setIsDeleting(true);
+    setDeletionProgress(0);
     
     // Use setTimeout to ensure UI updates before heavy operations
     setTimeout(async () => {
@@ -128,15 +130,18 @@ export default function Customers() {
         const currentDB = getDB(activeBusiness);
         
         // Process in smaller batches to prevent blocking
-        const batchSize = 50;
+        const batchSize = 25; // Smaller batch size for Electron
         const batches = [];
         
         for (let i = 0; i < selectedIds.length; i += batchSize) {
           batches.push(selectedIds.slice(i, i + batchSize));
         }
         
-        // Process batches with small delays to keep UI responsive
-        for (const batch of batches) {
+        // Process batches with delays to keep UI responsive
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          
+          // Delete customers batch
           await currentDB.customers.bulkDelete(batch);
           
           // Delete corresponding ledger entries
@@ -145,20 +150,34 @@ export default function Customers() {
           );
           await Promise.all(ledgerPromises);
           
-          // Small delay to allow UI updates
-          await new Promise(resolve => setTimeout(resolve, 10));
+          // Update progress
+          const progress = Math.round(((i + 1) / batches.length) * 100);
+          setDeletionProgress(progress);
+          
+          // Longer delay to allow UI updates in Electron
+          await new Promise(resolve => setTimeout(resolve, 50));
         }
         
+        // Final update
         setCustomers(prev => prev.filter(c => !selectedIds.includes(c.id)));
         setSelectedIds([]);
         setSelectAll(false);
+        setDeletionProgress(100);
+        
+        // Success message
+        setTimeout(() => {
+          alert(`Successfully deleted ${selectedIds.length} customers!`);
+          setDeletionProgress(0);
+        }, 500);
+        
       } catch (error) {
         console.error('Delete error:', error);
         alert('Error deleting customers. Please try again.');
       } finally {
         setIsDeleting(false);
+        setDeletionProgress(0);
       }
-    }, 100); // 100ms delay to ensure loading state shows
+    }, 200); // 200ms delay to ensure loading state shows in Electron
   };
 
   // Update selectAll when filteredCustomers or selectedIds change
@@ -361,6 +380,34 @@ export default function Customers() {
         onConfirm={handleDeleteCustomer}
       />
 
+      {/* Enhanced Loading Overlay */}
+      {isDeleting && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <div className="bg-white rounded-xl p-6 shadow-2xl max-w-sm mx-4">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="inline-block animate-spin rounded-full h-8 w-8 border-2 border-blue-600 border-t-transparent"></div>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Deleting Customers</h3>
+              <p className="text-sm text-gray-600 mb-3">
+                Please wait while we delete {selectedIds.length} customers...
+              </p>
+              {deletionProgress > 0 && (
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                  <div 
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${deletionProgress}%` }}
+                  ></div>
+                </div>
+              )}
+              <p className="text-xs text-gray-500">
+                {deletionProgress > 0 ? `${deletionProgress}% complete` : 'Initializing...'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <BulkDeleteBar
         selectedCount={selectedIds.length}
         onDelete={deleteSelected}
@@ -388,96 +435,84 @@ function CustomerModal({ customer, onClose, onSave }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="mb-6">
-          <h2 className="text-xl font-bold text-slate-900">
-            {customer ? 'Edit Customer' : 'Add New Customer'}
-          </h2>
-          <p className="mt-1 text-sm text-slate-500">
-            {customer ? 'Update customer information' : 'Create a new customer account'}
-          </p>
-        </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div className="bg-white rounded-lg p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h2 className="text-xl font-bold mb-4">{customer ? 'Edit Customer' : 'Add New Customer'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Customer Name *</label>
-              <input
-                type="text"
-                required
-                value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                placeholder="e.g. Ahmad Khan"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number *</label>
-              <input
-                type="tel"
-                required
-                value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                placeholder="e.g. 0312-1234567"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                placeholder="Optional"
-              />
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Address <span className="text-slate-400 font-normal">(optional)</span>
-              </label>
-              <input
-                type="text"
-                value={formData.address}
-                onChange={(e) => setFormData({...formData, address: e.target.value})}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                placeholder="Home or business address"
-              />
-            </div>
-
-            {!customer && (
-              <div className="sm:col-span-2">
-                <label className="block text-sm font-medium text-slate-700 mb-1">Opening Balance (Rs)</label>
-                <input
-                  type="number"
-                  min="1"
-                  value={formData.openingBalance}
-                  onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
-                  onFocus={e => e.target.select()}
-                  className="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-900 outline-none transition-colors focus:border-blue-500 focus:bg-white"
-                  placeholder=""
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  If customer already owes money, enter amount here
-                </p>
-              </div>
-            )}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Customer Name *</label>
+            <input
+              type="text"
+              required
+              value={formData.name}
+              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              className="mt-1 block w-full border rounded-md px-3 py-2"
+              placeholder="e.g. John Doe"
+            />
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              className="mt-1 block w-full border rounded-md px-3 py-2"
+              placeholder="e.g. 0312-1234567"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Email Address</label>
+            <input
+              type="email"
+              value={formData.email}
+              onChange={(e) => setFormData({...formData, email: e.target.value})}
+              className="mt-1 block w-full border rounded-md px-3 py-2"
+              placeholder="e.g. john@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Address</label>
+            <textarea
+              value={formData.address}
+              onChange={(e) => setFormData({...formData, address: e.target.value})}
+              className="mt-1 block w-full border rounded-md px-3 py-2"
+              rows={3}
+              placeholder="Home address"
+            />
+          </div>
+
+          {!customer && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700">Opening Balance (Rs)</label>
+              <input
+                type="number"
+                min="1"
+                value={formData.openingBalance}
+                onChange={(e) => setFormData({...formData, openingBalance: Number(e.target.value)})}
+                onFocus={e => e.target.select()}
+                className="mt-1 block w-full border rounded-md px-3 py-2"
+                placeholder=""
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                If customer already owes money, enter amount here
+              </p>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-4">
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 transition-colors"
+              className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-300"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="flex-1 rounded-xl bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 transition-colors"
+              className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
             >
               {customer ? 'Update Customer' : 'Save Customer'}
             </button>

@@ -18,6 +18,7 @@ export default function Purchases() {
   const settings = useSettings();
   const currency = settings?.currency ?? 'Rs';
   const { selectedIds, isSelected, toggleOne, toggleAll, clearSelection, isAllSelected, selectedCount } = useMultiSelect(purchases);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [form, setForm] = useState({
     productId: 0,
     supplierId: 0,
@@ -139,12 +140,16 @@ export default function Purchases() {
     const confirmed = window.confirm(`Delete ${selectedCount} purchase records? This will NOT reverse inventory.`);
     if (!confirmed) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedIds) {
-      await currentDB.purchases.delete(id);
+    setIsDeleting(true);
+    try {
+      const currentDB = getDB(activeBusiness);
+      // Use bulk delete for better performance
+      await currentDB.purchases.bulkDelete(selectedIds);
+      setPurchases((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
+      clearSelection();
+    } finally {
+      setIsDeleting(false);
     }
-    setPurchases((prev) => prev.filter((p) => !selectedIds.includes(p.id)));
-    clearSelection();
   };
 
   return (
@@ -316,6 +321,7 @@ export default function Purchases() {
         onDelete={deleteSelected}
         onCancel={clearSelection}
         itemLabel="purchase"
+        isDeleting={isDeleting}
       />
     </div>
   );

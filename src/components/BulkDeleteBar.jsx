@@ -2,7 +2,8 @@ export default function BulkDeleteBar({
   selectedCount,
   onDelete,
   onCancel,
-  itemLabel = 'item'
+  itemLabel = 'item',
+  isDeleting = false
 }) {
   if (selectedCount === 0) return null
 
@@ -13,17 +14,34 @@ export default function BulkDeleteBar({
           <span className="text-red-600 font-bold text-sm">{selectedCount}</span>
         </div>
         <span className="text-sm font-medium text-gray-700">
-          {selectedCount} {itemLabel}(s) selected
+          {isDeleting ? `Deleting ${itemLabel}(s)...` : `${selectedCount} ${itemLabel}(s) selected`}
         </span>
         <button
           onClick={onDelete}
-          className="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
+          disabled={isDeleting}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isDeleting 
+              ? 'bg-gray-400 text-gray-200 cursor-not-allowed' 
+              : 'bg-red-600 text-white hover:bg-red-700'
+          }`}
         >
-          🗑 Delete Selected
+          {isDeleting ? (
+            <>
+              <span className="inline-block animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2"></span>
+              Deleting...
+            </>
+          ) : (
+            <>🗑 Delete Selected</>
+          )}
         </button>
         <button
           onClick={onCancel}
-          className="text-gray-500 text-sm hover:text-gray-700 px-2 py-2"
+          disabled={isDeleting}
+          className={`px-2 py-2 text-sm transition-colors ${
+            isDeleting 
+              ? 'text-gray-300 cursor-not-allowed' 
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
         >
           ✕ Cancel
         </button>

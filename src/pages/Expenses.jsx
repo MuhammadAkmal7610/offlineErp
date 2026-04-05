@@ -19,6 +19,7 @@ export default function Expenses() {
   const currency = settings?.currency ?? 'Rs';
   const { selectedIds, isSelected, toggleOne, toggleAll, clearSelection, isAllSelected, selectedCount } = useMultiSelect(expenses);
   const [filterCategory, setFilterCategory] = useState('All');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -71,12 +72,35 @@ export default function Expenses() {
     const confirmed = window.confirm(`Delete ${selectedCount} expenses?`);
     if (!confirmed) return;
 
-    const currentDB = getDB(activeBusiness);
-    for (const id of selectedIds) {
-      await currentDB.expenses.delete(id);
-    }
-    setExpenses((prev) => prev.filter((e) => !selectedIds.includes(e.id)));
-    clearSelection();
+    setIsDeleting(true);
+    
+    setTimeout(async () => {
+      try {
+        const currentDB = getDB(activeBusiness);
+        
+        const batchSize = 25;
+        const batches = [];
+        
+        for (let i = 0; i < selectedIds.length; i += batchSize) {
+          batches.push(selectedIds.slice(i, i + batchSize));
+        }
+        
+        for (let i = 0; i < batches.length; i++) {
+          const batch = batches[i];
+          await currentDB.expenses.bulkDelete(batch);
+          
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+        
+        setExpenses((prev) => prev.filter((e) => !selectedIds.includes(e.id)));
+        clearSelection();
+      } catch (error) {
+        console.error('Delete error:', error);
+        alert('Error deleting expenses. Please try again.');
+      } finally {
+        setIsDeleting(false);
+      }
+    }, 200);
   };
 
   return (
@@ -234,6 +258,7 @@ export default function Expenses() {
         onDelete={deleteSelected}
         onCancel={clearSelection}
         itemLabel="expense"
+        isDeleting={isDeleting}
       />
     </div>
   );
